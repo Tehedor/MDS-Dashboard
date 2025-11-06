@@ -1,0 +1,147 @@
+# Configuración de componentes de la microgrid
+# Cada componente agrupa sus medidas con metadatos (unidades, descripción)
+
+components:
+  
+  MG_Bus:
+    name: "MG-LV-MSB (Bus Principal de Baja Tensión)"
+    description: "Representa la tensión de la red externa, medida en el punto de conexión al sistema de la compañía eléctrica"
+    measurements:
+      MG-LV-MSB_AC_Voltage:
+        unit: "V"
+        description: "Tensión AC del bus principal"
+        display_name: "MG-LV-MSB_AC_Voltage"
+        type: "voltaje"
+      MG-LV-MSB_Frequency:
+        unit: "Hz"
+        description: "Frecuencia del bus principal"
+        display_name: "MG-LV-MSB_Frequency"
+        type: "frecuencia"
+
+  Battery:
+    name: "Batería"
+    description: "Potencia de la batería y respuesta del sistema a cambios de consigna"
+    measurements:
+      Battery_Active_Power:
+        unit: "kW"
+        description: "Potencia activa de la batería"
+        display_name: "Battery_Active_Power"
+        type: "potencia"
+      Battery_Active_Power_Set_Response:
+        unit: "kW"
+        description: "Respuesta del sistema a cambios de consigna de potencia"
+        display_name: "Battery_Active_Power_Set_Response"
+        type: "potencia"
+
+  GE_Gas_Engine:
+    name: "GE (Motor de Gas)"
+    description: "Potencia total consumida por la microred (medida GE), potencia del 'cuerpo' GE y respuesta a la consigna"
+    measurements:
+      GE_Active_Power:
+        unit: "kW"
+        description: "Potencia activa total del motor de gas"
+        display_name: "GE_Active_Power"
+        type: "potencia"
+      GE_Body_Active_Power:
+        unit: "kW"
+        description: "Potencia activa del cuerpo del motor"
+        display_name: "GE_Body_Active_Power"
+        type: "potencia"
+      GE_Body_Active_Power_Set_Response:
+        unit: "kW"
+        description: "Respuesta a la consigna de potencia del cuerpo GE"
+        display_name: "GE_Body_Active_Power_Set_Response"
+        type: "potencia"
+
+  FC_Fuel_Cell:
+    name: "FC (Pila de Combustible)"
+    description: "Potencia activa de la pila de combustible, setpoint y respuesta al lazo de control"
+    measurements:
+      FC_Active_Power:
+        unit: "kW"
+        description: "Potencia activa de la pila de combustible"
+        display_name: "FC_Active_Power"
+        type: "potencia"
+      FC_Active_Power_FC_END_Set:
+        unit: "kW"
+        description: "Setpoint de potencia para la pila de combustible"
+        display_name: "FC_Active_Power_FC_END_Set"
+        type: "potencia"
+      FC_Active_Power_FC_end_Set_Response:
+        unit: "kW"
+        description: "Respuesta al lazo de control de potencia"
+        display_name: "FC_Active_Power_FC_end_Set_Response"
+        type: "potencia"
+
+  PVPCS_Photovoltaic:
+    name: "PVPCS (Generación Fotovoltaica)"
+    description: "Potencia activa del inversor fotovoltaico"
+    measurements:
+      PVPCS_Active_Power:
+        unit: "kW"
+        description: "Potencia activa del sistema fotovoltaico"
+        display_name: "PVPCS_Active_Power"
+        type: "potencia"
+
+  Receiving_Point:
+    name: "Receiving Point (Punto de Acoplamiento Común)"
+    description: "Tensión en el punto de conexión con la red externa"
+    measurements:
+      Receiving_Point_AC_Voltage:
+        unit: "V"
+        description: "Tensión AC en el punto de recepción"
+        display_name: "Receiving_Point_AC_Voltage"
+        type: "voltaje"
+
+  Thermal_System:
+    name: "Sistema Térmico (Chiller)"
+    description: "Temperatura del agua fría a la entrada y salida del lazo térmico del chiller"
+    measurements:
+      Inlet_Temperature_of_Chilled_Water:
+        unit: "°C"
+        description: "Temperatura del agua fría a la entrada"
+        display_name: "T_Inlet_Temperature_of_Chilled_Water"
+        type: "temperatura"
+      Outlet_Temperature:
+        unit: "°C"
+        description: "Temperatura del agua fría a la salida"
+        display_name: "T_Outlet_Temperature"
+        type: "temperatura"
+
+  Island_Mode:
+    name: "Modo Isla"
+    description: "Potencia, tensión y frecuencia medidas en el interruptor general durante operación en isla"
+    measurements:
+      Island_mode_MCCB_Active_Power:
+        unit: "kW"
+        description: "Potencia activa en modo isla"
+        display_name: "Island_mode_MCCB_Active_Power"
+        type: "potencia"
+      Island_mode_MCCB_AC_Voltage:
+        unit: "V"
+        description: "Tensión AC en modo isla"
+        display_name: "Island_mode_MCCB_AC_Voltage"
+        type: "voltaje"
+      Island_mode_MCCB_Frequency:
+        unit: "Hz"
+        description: "Frecuencia en modo isla"
+        display_name: "Island_mode_MCCB_Frequency"
+        type: "frecuencia"
+
+  Timestamp:
+    name: "Timestamp"
+    description: "Marca temporal de las mediciones"
+    measurements:
+      Timestamp:
+        unit: "datetime"
+        description: "Fecha y hora de la medición"
+        display_name: "Marca Temporal"
+        type: "tiempo"
+
+
+# Metadatos adicionales
+metadata:
+  version: "1.0"
+  dataset: "MDS Microgrid Dataset"
+  description: "Configuración de componentes y medidas de la microgrid"
+  date_created: "2025-11-05"
