@@ -1,0 +1,10 @@
+MDS-dataset/*.csv
+__pycache__/
+.vscode/    
+.env/
+*.pyc   
+.*
+!.gitignore
+!.gitkeep
+.DS_Store
+.ipynb_checkpoints
