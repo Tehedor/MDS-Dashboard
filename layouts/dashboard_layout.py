@@ -5,12 +5,14 @@ def serve_layout(config, opciones_checklist, columnas_disponibles, x_timer):
     """Crea el layout principal del dashboard."""
     return html.Div(
         style={
+            "backgroundColor": "#f7f7f9",
             'fontFamily': 'Arial, sans-serif',
-            'padding': '20px',
+            "minHeight": "100vh",  # Asegura que cubra toda la altura de la ventana
+            "padding": "20px"
         },
         children=[
             # html.H1('Dashboard Interactivo de Microgrid'),
-            html.Hr(),
+            # html.Hr(),
             
             # Usar el selector de componentes
             componentes_selector(config, opciones_checklist),

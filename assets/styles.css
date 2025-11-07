@@ -1,0 +1,150 @@
+/* Fondo general de la página */
+body {
+    background-color: #f7f7f9 !important;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Asegurar que los contenedores de Dash heredan el color */
+#react-entry-point,
+._dash-loading {
+    background-color: #f7f7f9;
+}
+
+/* Contenedor del checklist - fondo blanco con esquinas redondeadas */
+#checklist-columnas {
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 4px solid #8893fe !important;
+}
+
+/* Opciones individuales del checklist */
+#checklist-columnas label {
+    display: block;
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+/* Hover sobre las opciones */
+#checklist-columnas label:hover {
+    background-color: #f0f0f2;
+}
+
+/* Versión más intensa */
+#checklist-columnas label:has(input[type="checkbox"]:checked) {
+    background-color: rgba(136, 147, 254, 0.2);  /* Usa tu color principal con transparencia */
+    border-left: 4px solid #8893fe;
+    font-weight: bold;
+}
+
+/* Estilo de los checkboxes */
+#checklist-columnas input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    width: 20px;
+    height: 18px;
+    accent-color: #8893fe;
+}
+
+/* Texto de las opciones */
+#checklist-columnas label span {
+    font-size: 14px;
+    color: #333333;
+    vertical-align: middle;
+}
+
+/* Contenedor principal del gráfico - FONDO BLANCO con borde #8893fe */
+#grafico-temporal {
+    background-color: #8893fe !important;
+    border-radius: 12px !important;
+    padding: 8px !important;
+    box-shadow: 0 2px 8px rgba(136, 147, 254, 0.3);
+    border: 2px solid #8893fe !important;
+}
+
+/* Dropdowns con fondo blanco y borde #8893fe */
+.Select-control,
+.dash-dropdown .Select-control {
+    background-color: #ffffff !important;
+    border-radius: 8px !important;
+    border: 4px solid #8893fe !important;
+}
+
+/* Botones con borde #8893fe */
+button {
+    border-radius: 8px !important;
+    border: 4px solid #8893fe !important;
+    background-color: #ffffff;
+    color: #8893fe;
+    transition: all 0.2s ease;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #8893fe;
+    color: #ffffff;
+}
+
+/* Etiquetas (labels) */
+label {
+    color: #333333;
+    font-weight: 500;
+}
+
+/* Contenedor de filtros - alineación horizontal */
+.filtros-container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    gap: 15px !important;
+    margin-bottom: 20px !important;
+}
+
+/* Asegurar que los dropdowns y botones tengan el mismo comportamiento */
+.filtros-container > div {
+    flex: 1 1 auto;
+    min-width: 200px;
+}
+
+/* Botón alineado con los dropdowns */
+.filtros-container button {
+    height: 40px !important;
+    padding: 8px 16px !important;
+    margin-top: auto !important;
+}
+
+/* Dropdowns con altura consistente */
+.filtros-container .Select-control {
+    min-height: 40px !important;
+}
+
+/* ========================================
+   ESTADOS ACTIVOS PARA FILTROS
+   ======================================== */
+
+/* Botón en estado activo (cuando tiene selecciones) */
+button.active-filter {
+    background-color: #8893fe !important;
+    color: #ffffff !important;
+    border-color: #6b7ad4 !important;
+    box-shadow: 0 2px 8px rgba(136, 147, 254, 0.4) !important;
+}
+
+/* Dropdown en estado activo (cuando no es 'ALL') */
+.Select.active-filter .Select-control {
+    border-color: #8893fe !important;
+    background-color: rgba(136, 147, 254, 0.1) !important;
+    box-shadow: 0 0 0 1px #8893fe !important;
+}
+
+/* Texto del dropdown activo */
+.Select.active-filter .Select-value-label {
+    color: #8893fe !important;
+    font-weight: bold !important;
+}

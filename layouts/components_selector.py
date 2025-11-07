@@ -14,11 +14,11 @@ def componentes_selector(config, opciones_checklist):
 
     dropdown_componentes = dcc.Dropdown(
         id="dropdown-componentes",
-        options=opciones_componentes ,
+        options=opciones_componentes,
         value="ALL",
         placeholder="Selecciona un componente",
         clearable=False,
-        style={"marginBottom": "10px"}
+        className=""
     )
 
     # --- Tipos de medida dinámicos ---
@@ -40,7 +40,7 @@ def componentes_selector(config, opciones_checklist):
         value="ALL",
         placeholder="Selecciona un tipo de medida",
         clearable=False,
-        style={"marginBottom": "10px"}
+        className=""
     )
 
     # --- Botón ---
@@ -48,13 +48,7 @@ def componentes_selector(config, opciones_checklist):
         "Seleccionados",
         id="boton-mostrar-seleccionados",
         n_clicks=0,
-        className="btn btn-primary",
-        style={
-            "padding": "8px 12px",
-            "borderRadius": "5px",
-            "cursor": "pointer",
-            "marginTop": "5px",
-        },
+        className=""
     )
 
     # --- Checklist con estilo tipo grid responsivo ---
@@ -69,42 +63,39 @@ def componentes_selector(config, opciones_checklist):
             "gridTemplateColumns": "repeat(auto-fit, minmax(300px, 1fr))",
             "gap": "5px",
             "height": "140px",
-            # "maxHeight": "300px",
             "overflowY": "auto",
-            "border": "1px solid #ccc",
             "padding": "10px",
-            "borderRadius": "5px",
-        },
+        }
     )
 
-    # --- Diseño con filtros en línea ---
+    # --- Diseño con filtros alineados correctamente ---
     layout = html.Div(
         style={"marginBottom": "20px"},
         children=[
-            # Filtros en línea
+            # ✅ Contenedor de filtros con clase CSS
             html.Div(
-                style={
-                    "display": "grid",
-                    "gridTemplateColumns": "1fr 1fr auto",
-                    "gap": "15px",
-                    "alignItems": "end",
-                    "marginBottom": "15px"
-                },
+                className="filtros-container",
                 children=[
+                    # Columna 1: Dropdown de componentes
                     html.Div(
                         children=[
                             html.Label("Componente:", style={"fontWeight": "bold", "marginBottom": "5px", "display": "block"}),
                             dropdown_componentes,
                         ],
                     ),
+                    # Columna 2: Dropdown de tipo
                     html.Div(
                         children=[
                             html.Label("Tipo de medida:", style={"fontWeight": "bold", "marginBottom": "5px", "display": "block"}),
                             dropdown_tipo,
                         ],
                     ),
+                    # Columna 3: Botón (con label invisible para alineación)
                     html.Div(
-                        children=[boton_mostrar],
+                        children=[
+                            html.Label("\u00A0", style={"fontWeight": "bold", "marginBottom": "5px", "display": "block"}),  # Espacio invisible
+                            boton_mostrar,
+                        ],
                     ),
                 ],
             ),
