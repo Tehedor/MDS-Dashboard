@@ -20,44 +20,56 @@ def registrar_callbacks_filtros(app, config, opciones_checklist):
             Input('boton-mostrar-seleccionados', 'n_clicks')
         ],
         [
-            State('checklist-columnas', 'value')
+            State('checklist-columnas', 'value'),
+            State('boton-mostrar-seleccionados', 'className')  # ✅ NUEVO: Estado del botón
         ],
         prevent_initial_call=True
     )
-    def actualizar_checklist(componente_sel, tipo_sel, n_clicks, seleccionados):
+    def actualizar_checklist(componente_sel, tipo_sel, n_clicks, seleccionados, boton_clase):
         triggered = ctx.triggered_id
 
-        # 🟦 BOTÓN "Mostrar seleccionados"
+        # 🟦 BOTÓN "Mostrar seleccionados" - Toggle ON/OFF
         if triggered == 'boton-mostrar-seleccionados':
-            # Si ya estaba activo (mostrar solo seleccionados), volver a mostrar todos
-            if seleccionados and len(seleccionados) > 0:
-                # Alternar entre mostrar seleccionados y mostrar todos
-                # Detectar si ya está filtrado comparando opciones actuales vs todas
-                opciones_filtradas = [
-                    opt for opt in opciones_checklist if opt['value'] in seleccionados
-                ]
-                valores_validos = [v for v in (seleccionados or []) if v in [o['value'] for o in opciones_filtradas]]
-                
+            # Verificar si el botón ya está activo
+            boton_activo = boton_clase == "active-filter"
+            
+            if boton_activo:
+                # ✅ DESACTIVAR: Volver a mostrar todos
                 return (
-                    opciones_filtradas,
-                    valores_validos,
-                    'ALL',  # Resetear componente
+                    opciones_checklist,  # Mostrar todas las opciones
+                    seleccionados or [],  # Mantener selecciones
+                    'ALL',  # Resetear componente a "Todos"
                     "",     # Sin clase activa
-                    'ALL',  # Resetear tipo
+                    'ALL',  # Resetear tipo a "Todos"
                     "",     # Sin clase activa
-                    "active-filter"  # Botón activo
+                    ""      # Desactivar botón
                 )
             else:
-                # No hay seleccionados, no hacer nada
-                return (
-                    opciones_checklist,
-                    [],
-                    'ALL',
-                    "",
-                    'ALL',
-                    "",
-                    ""
-                )
+                # ✅ ACTIVAR: Mostrar solo seleccionados
+                if seleccionados and len(seleccionados) > 0:
+                    opciones_filtradas = [
+                        opt for opt in opciones_checklist if opt['value'] in seleccionados
+                    ]
+                    return (
+                        opciones_filtradas,  # Mostrar solo seleccionados
+                        seleccionados,       # Mantener selecciones
+                        'ALL',  # Resetear componente a "Todos"
+                        "",     # Sin clase activa
+                        'ALL',  # Resetear tipo a "Todos"
+                        "",     # Sin clase activa
+                        "active-filter"  # Activar botón
+                    )
+                else:
+                    # No hay seleccionados, no hacer nada
+                    return (
+                        opciones_checklist,
+                        [],
+                        'ALL',
+                        "",
+                        'ALL',
+                        "",
+                        ""
+                    )
 
         # 🟩 FILTRO POR COMPONENTE
         if triggered == 'dropdown-componentes':
