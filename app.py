@@ -1,5 +1,6 @@
 import dash
 import logging
+import os
 from pathlib import Path
 from dash.dependencies import Input, Output
 from plotly_resampler import register_plotly_resampler
@@ -34,7 +35,7 @@ def get_data():
         # "MDS-dataset/202306.csv",
         # "MDS-dataset/202307.csv",
     ]
-    # dataset_paths = [str(Path("MDS-dataset") / f.name) for f in csv_files]
+    dataset_paths = [str(Path("MDS-dataset") / f.name) for f in csv_files]
     return cargar_y_formatear_datasets(dataset_paths, x_timer)
 
 # --- Variables globales para layout (se inicializan de forma perezosa) ---
@@ -89,4 +90,12 @@ def callback_wrapper(cols, relayout):
 
 # --- Main ---
 if __name__ == "__main__":
-    app.run(debug=True, port=8050)
+    # Puerto configurable mediante variable de entorno PORT, por defecto 8050
+    try:
+        port = int(os.environ.get("PORT", 8050))
+    except (TypeError, ValueError):
+        logging.warning("La variable de entorno PORT no es un entero válido. Usando 8050.")
+        port = 8050
+
+    logging.info(f"Iniciando app en el puerto {port}")
+    app.run(debug=True, port=port)
