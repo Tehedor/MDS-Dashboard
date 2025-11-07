@@ -1,14 +1,15 @@
 [Unit]
-Description=Gunicorn instance to serve myapp
+Description=Gunicorn instance to serve MDS Dashboard
 After=network.target
 
 [Service]
-User=www-data
-Group=www-data
+User=root
+Group=root
 WorkingDirectory=/root/MDS-Dashboard
 Environment="PORT=80"
-ExecStart=/path/to/venv/bin/gunicorn -w 4 -b 0.0.0.0:$PORT app:server --pid /run/gunicorn.pid
-PIDFile=/run/gunicorn.pid
+ExecStart=/usr/local/bin/gunicorn -b 0.0.0.0:80 app:server --timeout 120
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
