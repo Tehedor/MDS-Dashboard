@@ -56,6 +56,7 @@ def actualizar_grafico(columnas_seleccionadas, relayout_data, df_plot, x_timer, 
         serie = df_visible[[x_timer, col]]
         serie_anomalos = serie[serie[col] == -999999.0]
         if not serie_anomalos.empty:
+            # Añadir marcadores de anomalía pero sin mostrarlos en la leyenda
             fig.add_trace(
                 go.Scatter(
                     x=serie_anomalos[x_timer],
@@ -63,6 +64,9 @@ def actualizar_grafico(columnas_seleccionadas, relayout_data, df_plot, x_timer, 
                     mode='markers',
                     name=f"{col} (Anómalo)",
                     marker=dict(color='orange', size=10, symbol='square'),
+                    showlegend=False,
+                    hoverinfo='text',
+                    hovertext=[f"Anómalo: {col}" for _ in range(len(serie_anomalos))]
                 )
             )
 

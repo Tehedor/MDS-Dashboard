@@ -31,11 +31,14 @@ def get_data():
 
     dataset_paths = [
         # "MDS-dataset/202205.csv",
+        "MDS-dataset/202302.csv",
+        "MDS-dataset/202303.csv",
+        "MDS-dataset/202304.csv",
         "MDS-dataset/202305.csv",
-        # "MDS-dataset/202306.csv",
-        # "MDS-dataset/202307.csv",
+        "MDS-dataset/202306.csv",
+        "MDS-dataset/202307.csv",
     ]
-    dataset_paths = [str(Path("MDS-dataset") / f.name) for f in csv_files]
+    # dataset_paths = [str(Path("MDS-dataset") / f.name) for f in csv_files]
     return cargar_y_formatear_datasets(dataset_paths, x_timer)
 
 # --- Variables globales para layout (se inicializan de forma perezosa) ---
