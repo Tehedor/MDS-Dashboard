@@ -8,22 +8,22 @@ if [ ! -f "gunicorn.service" ]; then
 fi
 
 echo "📋 Copiando gunicorn.service a /etc/systemd/system/"
-sudo cp gunicorn.service /etc/systemd/system/gunicorn.service
+cp gunicorn.service /etc/systemd/system/gunicorn.service
 
 echo "🔄 Recargando daemon de systemd..."
-sudo systemctl daemon-reload
+systemctl daemon-reload
 
 echo "🚀 Iniciando servicio gunicorn..."
-sudo systemctl start gunicorn
+systemctl start gunicorn
 
 echo "✅ Habilitando gunicorn para inicio automático..."
-sudo systemctl enable gunicorn
+systemctl enable gunicorn
 
 echo "📊 Estado del servicio:"
-sudo systemctl status gunicorn --no-pager
+systemctl status gunicorn --no-pager
 
 echo ""
 echo "✅ Instalación completada!"
-echo "Para ver logs: sudo journalctl -u gunicorn -f"
-echo "Para parar: sudo systemctl stop gunicorn"
-echo "Para reiniciar: sudo systemctl restart gunicorn"
+echo "Para ver logs: journalctl -u gunicorn -f"
+echo "Para parar: systemctl stop gunicorn"
+echo "Para reiniciar: systemctl restart gunicorn"
