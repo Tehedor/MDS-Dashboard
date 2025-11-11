@@ -16,14 +16,13 @@ def get_graph_layout(x_min=None, x_max=None, slider_min=None, slider_max=None):
     # graph_styles_name ="classic"
     # graph_styles_name ="dark"
     # graph_styles_name ="professional"
-    # graph_styles_name ="gradient"
     # graph_styles_name ="terminal"
-    graph_styles_name ="glass1"
     # graph_styles_name ="minimal"
     # graph_styles_name ="alert"  
     # graph_styles_name ="scientific"
     # graph_styles_name ="compact"
 
+    graph_styles_name ="glass1"
 
     base_style = dict(graph_styles_dict.get(graph_styles_name, {}))
 
