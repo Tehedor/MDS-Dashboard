@@ -1,0 +1,83 @@
+.
+|-- MDS-dataset
+|   |-- 202205.csv
+|   |-- 202206.csv
+|   |-- 202207.csv
+|   |-- 202208.csv
+|   |-- 202209.csv
+|   |-- 202210.csv
+|   |-- 202211.csv
+|   |-- 202212.csv
+|   |-- 202301.csv
+|   |-- 202302.csv
+|   |-- 202303.csv
+|   |-- 202304.csv
+|   |-- 202305.csv
+|   |-- 202306.csv
+|   `-- 202307.csv
+|-- __pycache__
+|   `-- app.cpython-312.pyc
+|-- app.py
+|-- assets
+|   `-- styles.css
+|-- callbacks
+|   |-- __pycache__
+|   |   |-- filtros.cpython-313.pyc
+|   |   |-- grafico_temporal.cpython-312.pyc
+|   |   `-- grafico_temporal.cpython-313.pyc
+|   |-- filtros.py
+|   `-- grafico_temporal.py
+|-- components.yml
+|-- daemon.sh
+|-- gunicorn.service
+|-- layouts
+|   |-- __pycache__
+|   |   |-- components_selector.cpython-313.pyc
+|   |   `-- dashboard_layout.cpython-313.pyc
+|   |-- components_selector.py
+|   |-- dashboard_layout.py
+|   `-- visuals
+|       |-- __pycache__
+|       |   |-- axes_style.cpython-313.pyc
+|       |   |-- graph_style.cpython-313.pyc
+|       |   |-- legend_style.cpython-313.pyc
+|       |   `-- slider_style.cpython-313.pyc
+|       |-- axes_style.py
+|       |-- graph_style.py
+|       |-- legend_style.py
+|       |-- slider_style.py
+|       `-- styles
+|           |-- __pycache__
+|           |   |-- axes.cpython-313.pyc
+|           |   |-- graphs.cpython-313.pyc
+|           |   |-- legends.cpython-313.pyc
+|           |   |-- slider.cpython-313.pyc
+|           |   `-- sliders.cpython-313.pyc
+|           |-- axes.py
+|           |-- graphs.py
+|           |-- legends.py
+|           `-- sliders.py
+|-- pruebas
+|-- requirements.txt
+|-- restartgunicorn.sh
+|-- server.sh
+`-- utils
+    |-- __pycache__
+    |   |-- cache_config.cpython-312.pyc
+    |   |-- cache_config.cpython-313.pyc
+    |   |-- data_loader.cpython-312.pyc
+    |   |-- data_loader.cpython-313.pyc
+    |   `-- helpers.cpython-313.pyc
+    |-- cache_config.py
+    |-- clean_functions
+    |   |-- 1_load_and_process_data.py
+    |   |-- 2_clean_and_unify_duplicatses.py
+    |   |-- 3_negative_frec.py
+    |   `-- 4_missing_data
+    |-- data_loader.py
+    |-- debug
+    |   `-- bad_timestamps_20251111_131136.txt
+    |-- helpers.py
+    `-- pruebas
+
+15 directories, 65 files

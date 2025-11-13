@@ -8,3 +8,4 @@ __pycache__/
 !.gitkeep
 .DS_Store
 .ipynb_checkpoints
+utils/debug/
