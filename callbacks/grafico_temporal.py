@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly_resampler import FigureResampler
 from layouts.visuals.graph_style import get_graph_layout
 
-def actualizar_grafico(columnas_seleccionadas, relayout_data, df_plot, x_timer, format_label_with_unit, default_n_shown_samples=400):
+def actualizar_grafico(columnas_seleccionadas, relayout_data, df_plot, x_timer, format_label_with_unit, default_n_shown_samples=600):
     logging.info(f"Callback ejecutado con columnas: {columnas_seleccionadas}")
 
     if not columnas_seleccionadas:
