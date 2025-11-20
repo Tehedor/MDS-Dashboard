@@ -1,0 +1,43 @@
+# /Datasets/MDS-Dataset/control_dataset.yml
+metadata:
+  version: "1.0"
+  dataset: "MDS Microgrid Dataset"
+  description: "Configuración de componentes y medidas de la microgrid"
+  date_created: "2025-11-05"
+  type: TabularDataSet
+  components: "control_components.yml"
+
+pipelineCleanData:
+  run_enabled: true
+
+  available_functions:
+    - merge_all_datasets:
+        enabled: true
+        module: "utils.clean_functions._0_merge_datasets"
+        func: "merge_all_datasets"
+        description: "Unir todos los datasets en uno"
+    - load_and_process_data:
+        enabled: false
+        module: "utils.clean_functions._1_load_and_process_data"
+        func: "load_and_process_data"
+        description: "Cargar y preprocesar datos"
+    - clean_and_unify_duplicates:
+        enabled: true
+        module: "utils.clean_functions._2_clean_and_unify_duplicatses"
+        func: "clean_and_unify_duplicates"
+        description: "Limpiar y unificar duplicados"
+    - negative_freq_report:
+        enabled: true
+        module: "utils.clean_functions._3_negative_frec"
+        func: "negative_freq_report"
+        description: "Detectar frecuencias negativas y generar reporte"
+    - rellenar_timestamps:
+        enabled: true
+        module: "utils.clean_functions._4_missing_data"
+        func: "rellenar_timestamps"
+        description: "Rellenar timestamps faltantes"
+    - normalize_timestamp_column:
+        enabled: true
+        module: "utils.clean_functions._5_nomalizar_timestamps"
+        func: "normalize_timestamp_column"
+        description: "Normalizar columna de timestamps"
