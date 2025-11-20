@@ -1,83 +1,73 @@
 .
-|-- MDS-dataset
-|   |-- 202205.csv
-|   |-- 202206.csv
-|   |-- 202207.csv
-|   |-- 202208.csv
-|   |-- 202209.csv
-|   |-- 202210.csv
-|   |-- 202211.csv
-|   |-- 202212.csv
-|   |-- 202301.csv
-|   |-- 202302.csv
-|   |-- 202303.csv
-|   |-- 202304.csv
-|   |-- 202305.csv
-|   |-- 202306.csv
-|   `-- 202307.csv
-|-- __pycache__
-|   `-- app.cpython-312.pyc
+|-- Datasets
+|   |-- Epoch-Dataset
+|   |   |-- 2.3_value_events_encoded_ts2sec.csv
+|   |   |-- Events_Dictionary.json
+|   |   |-- control_dataset.yml
+|   |   |-- control_groupedDictionary.yml
+|   |   `-- info.ipynb
+|   `-- MDS-Dataset
+|       |-- 202205.csv
+|       |-- 202206.csv
+|       |-- 202207.csv
+|       |-- 202208.csv
+|       |-- 202209.csv
+|       |-- 202210.csv
+|       |-- 202211.csv
+|       |-- 202212.csv
+|       |-- 202301.csv
+|       |-- 202302.csv
+|       |-- 202303.csv
+|       |-- 202304.csv
+|       |-- 202305.csv
+|       |-- 202306.csv
+|       |-- 202307.csv
+|       |-- control_components.yml
+|       `-- control_dataset.yml
 |-- app.py
 |-- assets
 |   `-- styles.css
 |-- callbacks
-|   |-- __pycache__
-|   |   |-- filtros.cpython-313.pyc
-|   |   |-- grafico_temporal.cpython-312.pyc
-|   |   `-- grafico_temporal.cpython-313.pyc
 |   |-- filtros.py
+|   |-- grafico_temporal copy.py
+|   |-- grafico_temporal red.py
+|   |-- grafico_temporal red_orange.py
+|   |-- grafico_temporal red_orange2.py
 |   `-- grafico_temporal.py
-|-- components.yml
-|-- daemon.sh
-|-- gunicorn.service
 |-- layouts
-|   |-- __pycache__
-|   |   |-- components_selector.cpython-313.pyc
-|   |   `-- dashboard_layout.cpython-313.pyc
 |   |-- components_selector.py
 |   |-- dashboard_layout.py
 |   `-- visuals
-|       |-- __pycache__
-|       |   |-- axes_style.cpython-313.pyc
-|       |   |-- graph_style.cpython-313.pyc
-|       |   |-- legend_style.cpython-313.pyc
-|       |   `-- slider_style.cpython-313.pyc
 |       |-- axes_style.py
 |       |-- graph_style.py
 |       |-- legend_style.py
 |       |-- slider_style.py
 |       `-- styles
-|           |-- __pycache__
-|           |   |-- axes.cpython-313.pyc
-|           |   |-- graphs.cpython-313.pyc
-|           |   |-- legends.cpython-313.pyc
-|           |   |-- slider.cpython-313.pyc
-|           |   `-- sliders.cpython-313.pyc
 |           |-- axes.py
 |           |-- graphs.py
 |           |-- legends.py
 |           `-- sliders.py
 |-- pruebas
-|-- requirements.txt
-|-- restartgunicorn.sh
-|-- server.sh
-`-- utils
-    |-- __pycache__
-    |   |-- cache_config.cpython-312.pyc
-    |   |-- cache_config.cpython-313.pyc
-    |   |-- data_loader.cpython-312.pyc
-    |   |-- data_loader.cpython-313.pyc
-    |   `-- helpers.cpython-313.pyc
-    |-- cache_config.py
-    |-- clean_functions
-    |   |-- 1_load_and_process_data.py
-    |   |-- 2_clean_and_unify_duplicatses.py
-    |   |-- 3_negative_frec.py
-    |   `-- 4_missing_data
-    |-- data_loader.py
-    |-- debug
-    |   `-- bad_timestamps_20251111_131136.txt
-    |-- helpers.py
-    `-- pruebas
+|-- utils
+|   |-- cache_config.py
+|   |-- clean_functions
+|   |   |-- _0_merge_datasets.py
+|   |   |-- _1_load_and_process_data.py
+|   |   |-- _2_clean_and_unify_duplicatses.py
+|   |   |-- _3_negative_frec.py
+|   |   |-- _4_missing_data.py
+|   |   `-- _5_nomalizar_timestamps.py
+|   |-- control_yml
+|   |   |-- eventEncoded_groupComponents.py
+|   |   |-- schema_control.yml
+|   |   `-- validate_config.py
+|   |-- data_loader.py
+|   `-- helpers.py
+`-- zgestion_files
+    |-- daemon.sh
+    |-- gunicorn.service
+    |-- requirements.txt
+    |-- restartgunicorn.sh
+    `-- server.sh
 
-15 directories, 65 files
+12 directories, 58 files

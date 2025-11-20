@@ -15,8 +15,8 @@ def merge_all_datasets(
     de la pipeline opere sobre un solo dataset.
 
     Args:
-        file_pattern: patrón glob (ej. "MDS-dataset/*.csv") o lista de patrones/rutas.
-        max_files: si se indica, limita la carga a los primeros N archivos.
+        file_pattern: patrón glob (ej. "-dataset/*.csv") o lista de patrones/rutas.
+        max_files: si se indica, limita la cargMDSa a los primeros N archivos.
         year_filter: si se indica, filtra los archivos cuyo nombre contiene este texto.
 
     Returns:

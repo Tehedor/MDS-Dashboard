@@ -1,0 +1,59 @@
+type: map
+mapping:
+  metadata:
+    type: map
+    required: true
+    mapping:
+      version:
+        type: str
+        required: true
+      dataset:
+        type: str
+        required: true
+      description:
+        type: str
+        required: true
+      date_created:
+        type: str
+        required: true
+      type:
+        type: str
+        required: true
+        enum: ["TabularDataSet", "EventEncodedDataSet"]
+      components:
+        type: str
+        required: false
+      dictionary:
+        type: str
+        required: false
+
+  pipelineCleanData:
+    type: map
+    required: false
+    mapping:
+      run_enabled:
+        type: bool
+        required: true
+
+      available_functions:
+        type: seq
+        required: false
+        sequence:
+          - type: map
+            # ACEPTA CUALQUIER CLAVE DENTRO DE CADA ITEM
+            mapping:
+              regex;(.+):
+                type: map
+                mapping:
+                  enabled:
+                    type: bool
+                    required: true
+                  module:
+                    type: str
+                    required: true
+                  func:
+                    type: str
+                    required: true
+                  description:
+                    type: str
+                    required: true

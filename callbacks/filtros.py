@@ -1,9 +1,18 @@
+# callbacks/filtros.py
+from dash import ctx
 from dash.dependencies import Input, Output, State
-from dash import no_update, ctx
+from dash import no_update
 
-def registrar_callbacks_filtros(app, config, opciones_checklist):
-    """Registra los callbacks relacionados con los filtros."""
-    
+from utils.helpers import build_checklist_options_from_components
+
+def registrar_callbacks_filtros(app):
+    """
+    Callbacks que actualizan checklist según dropdowns:
+      - dropdown-componentes
+      - dropdown-tipo
+      - boton-mostrar-seleccionados
+    Observa que las options base vienen de current-components / current-columns.
+    """
     @app.callback(
         [
             Output('checklist-columnas', 'options'),
@@ -17,134 +26,55 @@ def registrar_callbacks_filtros(app, config, opciones_checklist):
         [
             Input('dropdown-componentes', 'value'),
             Input('dropdown-tipo', 'value'),
-            Input('boton-mostrar-seleccionados', 'n_clicks')
+            Input('boton-mostrar-seleccionados', 'n_clicks'),
         ],
         [
             State('checklist-columnas', 'value'),
-            State('boton-mostrar-seleccionados', 'className')  # ✅ NUEVO: Estado del botón
+            State('current-components', 'data'),
+            State('current-columns', 'data'),
+            State('boton-mostrar-seleccionados', 'className'),
         ],
         prevent_initial_call=True
     )
-    def actualizar_checklist(componente_sel, tipo_sel, n_clicks, seleccionados, boton_clase):
+    def actualizar_checklist(componente_sel, tipo_sel, n_clicks,
+                              seleccionados, components_dict, cols, boton_clase):
         triggered = ctx.triggered_id
 
-        # 🟦 BOTÓN "Mostrar seleccionados" - Toggle ON/OFF
-        if triggered == 'boton-mostrar-seleccionados':
-            # Verificar si el botón ya está activo
-            boton_activo = boton_clase == "active-filter"
-            
-            if boton_activo:
-                # ✅ DESACTIVAR: Volver a mostrar todos
-                return (
-                    opciones_checklist,  # Mostrar todas las opciones
-                    seleccionados or [],  # Mantener selecciones
-                    'ALL',  # Resetear componente a "Todos"
-                    "",     # Sin clase activa
-                    'ALL',  # Resetear tipo a "Todos"
-                    "",     # Sin clase activa
-                    ""      # Desactivar botón
-                )
-            else:
-                # ✅ ACTIVAR: Mostrar solo seleccionados
-                if seleccionados and len(seleccionados) > 0:
-                    opciones_filtradas = [
-                        opt for opt in opciones_checklist if opt['value'] in seleccionados
-                    ]
-                    return (
-                        opciones_filtradas,  # Mostrar solo seleccionados
-                        seleccionados,       # Mantener selecciones
-                        'ALL',  # Resetear componente a "Todos"
-                        "",     # Sin clase activa
-                        'ALL',  # Resetear tipo a "Todos"
-                        "",     # Sin clase activa
-                        "active-filter"  # Activar botón
-                    )
-                else:
-                    # No hay seleccionados, no hacer nada
-                    return (
-                        opciones_checklist,
-                        [],
-                        'ALL',
-                        "",
-                        'ALL',
-                        "",
-                        ""
-                    )
+        components_dict = components_dict or {}
+        cols = cols or []
 
-        # 🟩 FILTRO POR COMPONENTE
+        # construir opciones base con helper
+        opciones_base = build_checklist_options_from_components(components_dict, None, cols)
+
+        # ... ahora replicar la lógica que ya tenías, pero sobre opciones_base ...
+        # Si se pulsa el botón, togglear mostrar solo seleccionados
+        if triggered == 'boton-mostrar-seleccionados':
+            boton_activo = boton_clase == "active-filter"
+            if boton_activo:
+                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+            else:
+                if seleccionados:
+                    opciones_filtradas = [opt for opt in opciones_base if opt['value'] in seleccionados]
+                    return opciones_filtradas, seleccionados, 'ALL', "", 'ALL', "", "active-filter"
+                else:
+                    return opciones_base, [], 'ALL', "", 'ALL', "", ""
+
+        # Filtrar por componente seleccionado
         if triggered == 'dropdown-componentes':
             if componente_sel in (None, 'ALL'):
-                # Resetear: mostrar todas las opciones, mantener selecciones
-                return (
-                    opciones_checklist,
-                    seleccionados or [],  # ✅ Mantener selecciones actuales
-                    'ALL',
-                    "",
-                    'ALL',  # Resetear tipo
-                    "",
-                    ""      # Resetear botón
-                )
-            
-            # Filtrar por componente específico
-            if componente_sel in config['components']:
-                component_data = config['components'][componente_sel]
-                measurements = list(component_data['measurements'].keys())
-                opciones_filtradas = [
-                    opt for opt in opciones_checklist if opt['value'] in measurements
-                ]
-                
-                return (
-                    opciones_filtradas,
-                    seleccionados or [],  # ✅ Mantener selecciones actuales
-                    componente_sel,
-                    "active-filter",  # Componente activo
-                    'ALL',            # Resetear tipo
-                    "",
-                    ""                # Resetear botón
-                )
+                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+            # componente_sel viene del YAML; hay que filtrar por prefix comp_id
+            opciones_filtradas = [opt for opt in opciones_base if opt['value'].startswith(f"{componente_sel}::") or f"({componente_sel})" in opt['label']]
+            return opciones_filtradas, seleccionados or [], componente_sel, "active-filter", 'ALL', "", ""
 
-        # 🟧 FILTRO POR TIPO DE MEDIDA
+        # Filtrar por tipo (para TabularDataSet)
         if triggered == 'dropdown-tipo':
             if tipo_sel in (None, 'ALL'):
-                # Resetear: mostrar todas las opciones, mantener selecciones
-                return (
-                    opciones_checklist,
-                    seleccionados or [],  # ✅ Mantener selecciones actuales
-                    'ALL',  # Resetear componente
-                    "",
-                    'ALL',
-                    "",
-                    ""      # Resetear botón
-                )
-            
-            # Filtrar por tipo de medida
-            columnas_tipo = []
-            for comp_data in config['components'].values():
-                for m_name, m_info in comp_data['measurements'].items():
-                    if m_info.get('type', None) == tipo_sel:
-                        columnas_tipo.append(m_name)
-            
-            opciones_filtradas = [
-                opt for opt in opciones_checklist if opt['value'] in columnas_tipo
-            ]
-            
-            return (
-                opciones_filtradas,
-                seleccionados or [],  # ✅ Mantener selecciones actuales
-                'ALL',            # Resetear componente
-                "",
-                tipo_sel,
-                "active-filter",  # Tipo activo
-                ""                # Resetear botón
-            )
+                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+            # tipo_sel se corresponde con campo type en measurement meta.
+            # Para simplificar, filtramos labels que contengan el tipo en lowercase (recomendable: indexar)
+            opciones_filtradas = [opt for opt in opciones_base if tipo_sel.lower() in opt['label'].lower()]
+            return opciones_filtradas, seleccionados or [], 'ALL', "", tipo_sel, "active-filter", ""
 
-        # 🔁 Fallback: no hacer nada
-        return (
-            opciones_checklist,
-            seleccionados or [],  # ✅ Mantener selecciones actuales
-            'ALL',
-            "",
-            'ALL',
-            "",
-            ""
-        )
+        # fallback
+        return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""

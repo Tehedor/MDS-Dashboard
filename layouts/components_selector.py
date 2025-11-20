@@ -1,3 +1,4 @@
+# /layouts/components_selector.py
 from dash import html, dcc
 
 def componentes_selector(config, opciones_checklist):
@@ -54,8 +55,8 @@ def componentes_selector(config, opciones_checklist):
     # --- Checklist con estilo tipo grid responsivo ---
     checklist = dcc.Checklist(
         id="checklist-columnas",
-        options=opciones_checklist,
-        value=[opciones_checklist[0]['value']] if opciones_checklist else [],
+        options=[],
+        value=[],
         inputStyle={"marginRight": "8px"},
         labelStyle={"display": "inline-block", "marginBottom": "6px"},
         style={
