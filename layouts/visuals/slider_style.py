@@ -1,3 +1,4 @@
+# layouts/visuals/slider_style.py
 from .styles.sliders import slider_styles_dict
 
 def get_slider_style(slider_min=None, slider_max=None):

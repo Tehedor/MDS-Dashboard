@@ -1,3 +1,4 @@
+# layouts/dashboard_layout.py
 from dash import html, dcc
 from layouts.components_selector import componentes_selector
 

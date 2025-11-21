@@ -1,3 +1,4 @@
+# layouts/components_selector.py
 from dash import html, dcc
 
 def componentes_selector(config, opciones_checklist):
