@@ -1,61 +1,81 @@
 # /layouts/components_selector.py
 from dash import html, dcc
 
-def componentes_selector(config, opciones_checklist):
-    """Genera los filtros y el checklist de medidas de forma dinámica y responsive."""
+def componentes_selector(config, opciones_checklist, datasets_disponibles):
+    """
+    Genera la zona de filtros:
+    - Selector de componente
+    - Selector de tipo (para TabularDataSet utiliza los tipos del YAML;
+      para EventEncodedDataSet ofrece raw/from_to como tipos)
+    - Botón "Seleccionados"
+    - Selector de dataset (4ª columna)
+    - Checklist dinámico
+    """
 
-    # --- Dropdown de componentes ---
-    opciones_componentes = [
-        {'label': 'Todos', 'value': 'ALL'}
-    ] + [
-        {'label': comp_data.get('name', comp_id), 'value': comp_id}
-        for comp_id, comp_data in config['components'].items()
-        if comp_id.lower() != 'timestamp'
-    ]
+    # ---------------------------------------------------------
+    # Si config es None → estamos en carga inicial del layout
+    # ---------------------------------------------------------
+    if config is None:
+        componentes_opts = [{'label': 'Todos', 'value': 'ALL'}]
+        tipos_opts = [{'label': 'Todos', 'value': 'ALL'}]
+    else:
+        # Dropdown de componentes
+        componentes_opts = [{'label': 'Todos', 'value': 'ALL'}] + [
+            {'label': comp_data.get('name', comp_id), 'value': comp_id}
+            for comp_id, comp_data in config.get('components', {}).items()
+            if comp_id.lower() != 'timestamp'
+        ]
 
+        # Dropdown de tipos
+        tipos_unicos = set()
+        # Para TabularDataSet: recoger tipos de measurement meta
+        for comp_data in config.get('components', {}).values():
+            for m_info in comp_data.get("measurements", {}).values():
+                tipo = m_info.get("type")
+                if tipo and tipo not in ['tiempo', 'time', 'timestamp']:
+                    tipos_unicos.add(tipo)
+
+        tipos_opts = [{'label': 'Todos', 'value': 'ALL'}] + [
+            {'label': t.capitalize(), 'value': t} for t in sorted(tipos_unicos)
+        ]
+
+    # ---------------------------------------------------------
+    # Controles
+    # ---------------------------------------------------------
     dropdown_componentes = dcc.Dropdown(
         id="dropdown-componentes",
-        options=opciones_componentes,
+        options=componentes_opts,
         value="ALL",
-        placeholder="Selecciona un componente",
         clearable=False,
-        className=""
     )
-
-    # --- Tipos de medida dinámicos ---
-    tipos_unicos = set()
-    for comp_data in config['components'].values():
-        for m_info in comp_data.get("measurements", {}).values():
-            tipo = m_info.get("type")
-            if tipo and tipo not in ['tiempo', 'time', 'timestamp']:
-                tipos_unicos.add(tipo)
-    opciones_tipo = [
-        {'label': 'Todos', 'value': 'ALL'}
-    ] + [
-        {'label': tipo.capitalize(), 'value': tipo} for tipo in sorted(tipos_unicos)
-    ]
 
     dropdown_tipo = dcc.Dropdown(
         id="dropdown-tipo",
-        options=opciones_tipo,
+        options=tipos_opts,
         value="ALL",
-        placeholder="Selecciona un tipo de medida",
         clearable=False,
-        className=""
     )
 
-    # --- Botón ---
-    boton_mostrar = html.Button(
+    boton_seleccionados = html.Button(
         "Seleccionados",
         id="boton-mostrar-seleccionados",
         n_clicks=0,
         className=""
     )
 
-    # --- Checklist con estilo tipo grid responsivo ---
+    dropdown_dataset = dcc.Dropdown(
+        id="dataset-selector",
+        options=[{"label": k, "value": k} for k in datasets_disponibles.keys()],
+        value=list(datasets_disponibles.keys())[0],
+        clearable=False,
+    )
+
+    # ---------------------------------------------------------
+    # CHECKLIST (vacío inicialmente)
+    # ---------------------------------------------------------
     checklist = dcc.Checklist(
         id="checklist-columnas",
-        options=[],
+        options=opciones_checklist or [],
         value=[],
         inputStyle={"marginRight": "8px"},
         labelStyle={"display": "inline-block", "marginBottom": "6px"},
@@ -69,46 +89,42 @@ def componentes_selector(config, opciones_checklist):
         }
     )
 
-    # --- Diseño con filtros alineados correctamente ---
-    layout = html.Div(
-        style={"marginBottom": "20px"},
-        children=[
-            # ✅ Contenedor de filtros con clase CSS
+    # ---------------------------------------------------------
+    # Layout visual: 4 columnas en la fila superior
+    # ---------------------------------------------------------
+    return html.Div(
+        [
             html.Div(
                 className="filtros-container",
+                style={"display": "grid", "gridTemplateColumns": "1fr 1fr 1fr 1fr", "gap": "15px"},
                 children=[
-                    # Columna 1: Dropdown de componentes
-                    html.Div(
-                        children=[
-                            html.Label("Componente:", style={"fontWeight": "bold", "marginBottom": "5px", "display": "block"}),
-                            dropdown_componentes,
-                        ],
-                    ),
-                    # Columna 2: Dropdown de tipo
-                    html.Div(
-                        children=[
-                            html.Label("Tipo de medida:", style={"fontWeight": "bold", "marginBottom": "5px", "display": "block"}),
-                            dropdown_tipo,
-                        ],
-                    ),
-                    # Columna 3: Botón (con label invisible para alineación)
-                    html.Div(
-                        children=[
-                            html.Label("\u00A0", style={"fontWeight": "bold", "marginBottom": "5px", "display": "block"}),  # Espacio invisible
-                            boton_mostrar,
-                        ],
-                    ),
+                    html.Div([
+                        html.Label("Componente:", style={"fontWeight": "bold"}),
+                        dropdown_componentes,
+                    ]),
+                    html.Div([
+                        html.Label("Tipo:", style={"fontWeight": "bold"}),
+                        dropdown_tipo,
+                    ]),
+                    html.Div([
+                        html.Label(" ", style={"fontWeight": "bold"}), # alineación
+                        boton_seleccionados,
+                    ]),
+                    html.Div([
+                        html.Label("Dataset:", style={"fontWeight": "bold"}),
+                        dropdown_dataset,
+                    ]),
                 ],
             ),
-            # Checklist
+
+            html.Br(),
+
             html.Div(
                 id="zona-checklist",
                 children=[
-                    html.Label("Selecciona medidas:", style={"fontWeight": "bold", "marginBottom": "8px", "display": "block"}),
+                    html.Label("Selecciona medidas:", style={"fontWeight": "bold"}),
                     checklist,
                 ],
             ),
-        ],
+        ]
     )
-
-    return layout

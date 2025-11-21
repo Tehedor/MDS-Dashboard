@@ -1,0 +1,616 @@
+# utils/dataset_manager.py
+
+from math import log
+import os
+import logging
+import importlib
+from pathlib import Path
+import duckdb
+import pandas as pd
+import shutil
+import yaml
+from utils.helpers import load_config
+from utils.data_loader import cargar_dataset_completo
+from utils.control_yml.eventEncoded_groupComponents import group_components_to_yaml_file
+
+
+logger = logging.getLogger(__name__)
+
+
+# -----------------------------------------------------------
+# ESCANEAR DATASETS
+# -----------------------------------------------------------
+def scan_datasets(base_dir: Path):
+    """
+    Escanea todos los directorios dentro de base_dir y detecta datasets.
+    Cada dataset debe tener un control_dataset.yml.
+    Devuelve un dict con info de cada dataset.
+    """
+    datasets = {}
+    logging.info("🔍 Escaneando datasets en %s", base_dir)
+    for ds_dir in sorted(base_dir.iterdir()):
+        logging.info("Revisando %s", ds_dir)
+        if not ds_dir.is_dir():
+            continue
+
+         # Ignorar directorios ocultos (comienzan por '.')
+        if ds_dir.name.startswith("."):
+            logging.debug("Ignorado directorio oculto: %s", ds_dir)
+            continue
+
+        config_file = ds_dir / "control_dataset.yml"
+        if not config_file.exists():
+            logging.warning("Dataset %s no tiene control_dataset.yml, se ignora", ds_dir)
+            continue
+
+        # Cargar config
+        with open(config_file, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        # Verificar componente obligatorio
+        components_file = ds_dir / config.get("metadata", {}).get("components", "")
+        if not components_file.exists():
+            if config.get("metadata", {}).get("type") == "EventEncodedDataSet":
+                # Generar groupedDictionary automáticamente
+                data_rel = config.get("metadata", {}).get("dictionary", "")
+                if not data_rel:
+                    raise FileNotFoundError(f"Dataset {ds_dir} no tiene 'dictionary' en metadata")
+                data_path = ds_dir / data_rel
+                if not data_path.exists():
+                    raise FileNotFoundError(f"Dataset {ds_dir} requiere fichero {data_path}")
+                data = str(data_path)
+                out_put_file = config.get("metadata", {}).get("components", "control_groupedDictionary.yml")
+                if not group_components_to_yaml_file(data, out_put_file):
+                    raise FileNotFoundError(f"Dataset {ds_dir} requiere componente {components_file}")
+       
+        if components_file.exists():
+            try:
+                with open(components_file, "r", encoding="utf-8") as cf:
+                    loaded = yaml.safe_load(cf) or {}
+                    components_data = loaded.get("components", loaded)  
+            except Exception as e:
+                logging.warning("No se pudo leer components YAML %s: %s", components_file, e)
+                components_data = {}
+        else:
+            components_data = {}
+
+
+        # DuckDB
+        processed_dir = ds_dir / "processed"
+        processed_dir.mkdir(exist_ok=True)
+
+        duckdb_path = processed_dir / f"{ds_dir.name}.duckdb"
+
+
+
+        datasets[ds_dir.name] = {
+            "path": ds_dir,
+            "config": config_file,
+            "components": components_data,
+            "duckdb": duckdb_path,
+            "type": config["metadata"].get("type", "TabularDataSet"),
+            "table_name": ds_dir.name.replace("-", "_").lower(),
+            "pipelineCleanData": config.get("pipelineCleanData", {}),
+        }
+
+    return datasets
+
+
+# -----------------------------------------------------------
+# CREAR O ABRIR CONEXIÓN A DUCKDB
+# -----------------------------------------------------------
+def get_duckdb_con(db_path: Path):
+    """Conexión a DuckDB (crea DB si no existe)."""
+    con = duckdb.connect(database=str(db_path), read_only=False)
+    return con
+
+# -----------------------------------------------------------
+# EJECUTAR PIPELINE DINÁMICAMENTE
+# -----------------------------------------------------------
+def run_pipeline(config, dataset_info):
+    """
+    Ejecuta el pipeline definido en el YAML, cargando módulos dinámicamente.
+    Retorna el DataFrame procesado.
+    """
+
+    df = None
+
+    steps = config.get("pipelineCleanData", {}).get("available_functions", [])
+
+    for step in steps:
+        if not step.get("enabled", False):
+            continue
+
+        module_path = step["module"]
+        func_name = step["func"]
+
+        module = importlib.import_module(module_path)
+        func = getattr(module, func_name)
+
+        logger.info(f"Ejecutando paso: {func_name}")
+
+        df = func(df, dataset_info)
+
+    return df
+
+
+# -----------------------------------------------------------
+# EJECUTAR PIPELINE
+# -----------------------------------------------------------
+
+
+def load_processed_or_build(con: duckdb.DuckDBPyConnection, dataset_info: dict, config: dict) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Genera DuckDB a partir de CSV si no existe o si hay que regenerar.
+    Devuelve df de info inicial y lista de columnas disponibles.
+    """
+
+    table_name = dataset_info["table_name"]
+    duckdb_path = dataset_info["duckdb"]
+    raw_dir = dataset_info["path"] / "raw"
+    
+    
+    logging.info("################################################")
+    logging.info("Cargando o generando dataset %s", table_name  )
+    logging.info("DuckDB path: %s", duckdb_path)
+    logging.info("Raw dir: %s", raw_dir)
+    logging.info("################################################")
+
+
+    # Si DuckDB ya existe y tiene la tabla, solo leer columnas
+    try:
+        existing_tables = con.execute("SHOW TABLES").fetchall()
+        if (table_name,) in existing_tables:
+            df_info = con.execute(f"SELECT * FROM {table_name} LIMIT 5").df()
+            columnas_disponibles = [c for c in df_info.columns if c != "Timestamp"]
+            return df_info, columnas_disponibles
+    except Exception as e:
+        logging.warning("DuckDB vacía o tabla no encontrada: %s", e)
+
+    # --- Generar dataset limpio ---
+    logging.info("🚀 Construyendo dataset %s desde raw", table_name)
+    csv_files = sorted(raw_dir.glob("*.csv"))
+
+    if not csv_files:
+        raise FileNotFoundError(f"No se encontraron CSVs en {raw_dir}")
+
+    # Cargar y limpiar
+    df = cargar_dataset_completo([
+        str(f) for f in csv_files], 
+        pipelineCleanData=dataset_info["pipelineCleanData"], 
+        timestamp_col="Timestamp")
+    if df is None or df.empty:
+        raise RuntimeError(f"Pipeline produjo un DataFrame vacío para {dataset_info['path']}")
+
+    # Guardar DuckDB
+    con.execute(f"DROP TABLE IF EXISTS {table_name}")
+    con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
+    logging.info("✔️ Dataset cargado en DuckDB: %s", table_name)
+
+    columnas_disponibles = [c for c in df.columns if c != "Timestamp"]
+    df_info = df.head(5)
+    return df_info, columnas_disponibles# utils/helpers.py
+import yaml
+from pathlib import Path
+
+def load_config(path: Path):
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+def build_checklist_options_from_components(components_dict, dataset_type, duckdb_columns):
+    """
+    Devuelve una lista de opciones para dcc.Checklist basadas en:
+      - components_dict: dict con estructura 'components' (como en tus YAMLs)
+      - dataset_type: 'TabularDataSet' o 'EventEncodedDataSet'
+      - duckdb_columns: lista de columnas reales (para evitar mostrar cols inexistentes)
+    Para EventEncodedDataSet ofrecemos opciones compuestas:
+      - nombre_medida (raw)  -> label "Measurement (component) [raw]"
+      - nombre_medida (from_to) -> label "Measurement (component) [from_to]"
+    Para TabularDataSet se ofrecen las mediciones tal cual (si están en duckdb_columns)
+    """
+
+    options = []
+
+    for comp_id, comp in components_dict.items():
+        measurements = comp.get("measurements", {})
+
+        # EventEncoded: measurements contains groups raw/from_to with columns lists (names)
+        if dataset_type == "EventEncodedDataSet":
+            # Para cada medición (ej: Battery_Active_Power) puede haber 'raw' y 'from_to'
+            for meas_id, meas_info in measurements.items():
+                # meas_info has raw/from_to subkeys
+                if "raw" in meas_info:
+                    # raw -> columnas list (strings) o encoded indices
+                    cols = meas_info["raw"].get("columns", [])
+                    for c in cols:
+                        if c in duckdb_columns:
+                            options.append({
+                                "label": f"{c} ({comp.get('name', comp_id)} · raw)",
+                                "value": f"{comp_id}::raw::{c}"
+                            })
+                if "from_to" in meas_info:
+                    cols = meas_info["from_to"].get("columns", [])
+                    for c in cols:
+                        if c in duckdb_columns:
+                            options.append({
+                                "label": f"{c} ({comp.get('name', comp_id)} · from_to)",
+                                "value": f"{comp_id}::from_to::{c}"
+                            })
+        else:
+            # Tabular: measurements map names to meta; we show the measurement keys if exist in DB
+            for meas_key, meas_meta in measurements.items():
+                # medición puede mapear a una columna con mismo nombre (display_name) o la key
+                col_candidates = [meas_meta.get("display_name"), meas_key]
+                for cand in col_candidates:
+                    if cand and cand in duckdb_columns:
+                        options.append({
+                            "label": f"{meas_meta.get('display_name', meas_key)} ({comp.get('name', comp_id)})",
+                            "value": cand
+                        })
+                        break
+
+    # Fallback: si options queda vacío, generar options con todas las columnas reales (except Timestamp)
+    if not options:
+        for c in duckdb_columns:
+            if c.lower() != "timestamp":
+                options.append({"label": c, "value": c})
+
+    return options
+
+
+def get_measurement_info_from_components(components_dict, value_code):
+    """
+    Dado un value del checklist (por ejemplo 'Battery::raw::Q05' o 'MG-LV-MSB_AC_Voltage'),
+    devuelve info: {'component': ..., 'measurement': ..., 'mode': 'raw'|'from_to'|None}
+    """
+    if "::" in value_code:
+        comp_id, mode, col = value_code.split("::", 2)
+        comp = components_dict.get(comp_id, {})
+        return {
+            "component": comp.get("name", comp_id),
+            "measurement": col,
+            "mode": mode
+        }
+    else:
+        # tabular simple: buscar en components
+        for comp_id, comp in components_dict.items():
+            meas = comp.get("measurements", {})
+            if value_code in meas or any(value_code == v.get("display_name") for v in meas.values()):
+                return {"component": comp.get("name", comp_id), "measurement": value_code, "mode": None}
+        return None
+# /layouts/dashboard_layout.py
+from dash import html, dcc
+from layouts.components_selector import componentes_selector
+
+
+def serve_layout(config, datasets, opciones_checklist, columnas, x_timer="Timestamp"):
+    """
+    Layout principal del dashboard.
+    Contiene:
+    - Selector de componentes
+    - Selector de tipos
+    - Botón "Seleccionados"
+    - Selector de Dataset (4ª columna)
+    - Checklist dinámico
+    - Gráfica temporal
+    """
+
+    return html.Div(
+        style={
+            "backgroundColor": "#f7f7f9",
+            'fontFamily': 'Arial, sans-serif',
+            "minHeight": "100vh",
+            "padding": "20px"
+        },
+        children=[
+
+            # Bloque completo de filtros y checklist
+            componentes_selector(
+                config=config,
+                opciones_checklist=opciones_checklist,
+                datasets_disponibles=datasets
+            ),
+
+            # Zona del gráfico
+            html.Div(
+                id='zona-grafico',
+                children=[
+                    dcc.Graph(
+                        id='grafico-temporal',
+                        figure={},
+                        style={'height': '70vh'}
+                    )
+                ],
+            ),
+        ],
+    )
+# /layouts/components_selector.py
+from dash import html, dcc
+
+def componentes_selector(config, opciones_checklist, datasets_disponibles):
+    """
+    Genera la zona de filtros:
+    - Selector de componente
+    - Selector de tipo
+    - Botón "Seleccionados"
+    - Selector de dataset (4ª columna)
+    - Checklist dinámico
+    """
+
+    # ---------------------------------------------------------
+    # Si config es None → estamos en carga inicial del layout
+    # ---------------------------------------------------------
+    if config is None:
+        componentes_opts = [{'label': 'Todos', 'value': 'ALL'}]
+        tipos_opts = [{'label': 'Todos', 'value': 'ALL'}]
+    else:
+        # Dropdown de componentes
+        componentes_opts = [
+            {'label': 'Todos', 'value': 'ALL'}
+        ] + [
+            {'label': comp_data.get('name', comp_id), 'value': comp_id}
+            for comp_id, comp_data in config.get('components', {}).items()
+            if comp_id.lower() != 'timestamp'
+        ]
+
+        # Dropdown de tipos
+        tipos_unicos = set()
+        for comp_data in config.get('components', {}).values():
+            for m_info in comp_data.get("measurements", {}).values():
+                tipo = m_info.get("type")
+                if tipo and tipo not in ['tiempo', 'time', 'timestamp']:
+                    tipos_unicos.add(tipo)
+
+        tipos_opts = [{'label': 'Todos', 'value': 'ALL'}] + [
+            {'label': t.capitalize(), 'value': t} for t in sorted(tipos_unicos)
+        ]
+
+    # ---------------------------------------------------------
+    # CONTROLES DE FILTRO
+    # ---------------------------------------------------------
+
+    dropdown_componentes = dcc.Dropdown(
+        id="dropdown-componentes",
+        options=componentes_opts,
+        value="ALL",
+        clearable=False,
+    )
+
+    dropdown_tipo = dcc.Dropdown(
+        id="dropdown-tipo",
+        options=tipos_opts,
+        value="ALL",
+        clearable=False,
+    )
+
+    boton_seleccionados = html.Button(
+        "Seleccionados",
+        id="boton-mostrar-seleccionados",
+        n_clicks=0,
+        className=""
+    )
+
+    dropdown_dataset = dcc.Dropdown(
+        id="dataset-selector",
+        options=[{"label": k, "value": k} for k in datasets_disponibles.keys()],
+        value=list(datasets_disponibles.keys())[0],
+        clearable=False,
+    )
+
+    # ---------------------------------------------------------
+    # CHECKLIST (vacío inicialmente)
+    # ---------------------------------------------------------
+    checklist = dcc.Checklist(
+        id="checklist-columnas",
+        options=opciones_checklist or [],
+        value=[],
+        inputStyle={"marginRight": "8px"},
+        labelStyle={"display": "inline-block", "marginBottom": "6px"},
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(auto-fit, minmax(300px, 1fr))",
+            "gap": "5px",
+            "height": "140px",
+            "overflowY": "auto",
+            "padding": "10px",
+        }
+    )
+
+    # ---------------------------------------------------------
+    # Layout visual
+    # ---------------------------------------------------------
+
+    return html.Div(
+        [
+            html.Div(
+                className="filtros-container",
+                style={"display": "grid", "gridTemplateColumns": "1fr 1fr 1fr 1fr", "gap": "15px"},
+                children=[
+                    html.Div([
+                        html.Label("Componente:", style={"fontWeight": "bold"}),
+                        dropdown_componentes,
+                    ]),
+                    html.Div([
+                        html.Label("Tipo:", style={"fontWeight": "bold"}),
+                        dropdown_tipo,
+                    ]),
+                    html.Div([
+                        html.Label(" ", style={"fontWeight": "bold"}), # alineación
+                        boton_seleccionados,
+                    ]),
+                    html.Div([
+                        html.Label("Dataset:", style={"fontWeight": "bold"}),
+                        dropdown_dataset,
+                    ]),
+                ],
+            ),
+
+            html.Br(),
+
+            html.Div(
+                id="zona-checklist",
+                children=[
+                    html.Label("Selecciona medidas:", style={"fontWeight": "bold"}),
+                    checklist,
+                ],
+            ),
+        ]
+    )
+# callbacks/filtros.py
+from dash import ctx
+from dash.dependencies import Input, Output, State
+from dash import no_update
+
+from utils.helpers import build_checklist_options_from_components
+
+def registrar_callbacks_filtros(app):
+    """
+    Callbacks que actualizan checklist según dropdowns:
+      - dropdown-componentes
+      - dropdown-tipo
+      - boton-mostrar-seleccionados
+    Observa que las options base vienen de current-components / current-columns.
+    """
+    @app.callback(
+        [
+            Output('checklist-columnas', 'options'),
+            Output('checklist-columnas', 'value'),
+            Output('dropdown-componentes', 'value'),
+            Output('dropdown-componentes', 'className'),
+            Output('dropdown-tipo', 'value'),
+            Output('dropdown-tipo', 'className'),
+            Output('boton-mostrar-seleccionados', 'className'),
+        ],
+        [
+            Input('dropdown-componentes', 'value'),
+            Input('dropdown-tipo', 'value'),
+            Input('boton-mostrar-seleccionados', 'n_clicks'),
+        ],
+        [
+            State('checklist-columnas', 'value'),
+            State('current-components', 'data'),
+            State('current-columns', 'data'),
+            State('boton-mostrar-seleccionados', 'className'),
+        ],
+        prevent_initial_call=True
+    )
+    def actualizar_checklist(componente_sel, tipo_sel, n_clicks,
+                              seleccionados, components_dict, cols, boton_clase):
+        triggered = ctx.triggered_id
+
+        components_dict = components_dict or {}
+        cols = cols or []
+
+        # construir opciones base con helper
+        opciones_base = build_checklist_options_from_components(components_dict, None, cols)
+
+        # ... ahora replicar la lógica que ya tenías, pero sobre opciones_base ...
+        # Si se pulsa el botón, togglear mostrar solo seleccionados
+        if triggered == 'boton-mostrar-seleccionados':
+            boton_activo = boton_clase == "active-filter"
+            if boton_activo:
+                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+            else:
+                if seleccionados:
+                    opciones_filtradas = [opt for opt in opciones_base if opt['value'] in seleccionados]
+                    return opciones_filtradas, seleccionados, 'ALL', "", 'ALL', "", "active-filter"
+                else:
+                    return opciones_base, [], 'ALL', "", 'ALL', "", ""
+
+        # Filtrar por componente seleccionado
+        if triggered == 'dropdown-componentes':
+            if componente_sel in (None, 'ALL'):
+                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+            # componente_sel viene del YAML; hay que filtrar por prefix comp_id
+            opciones_filtradas = [opt for opt in opciones_base if opt['value'].startswith(f"{componente_sel}::") or f"({componente_sel})" in opt['label']]
+            return opciones_filtradas, seleccionados or [], componente_sel, "active-filter", 'ALL', "", ""
+
+        # Filtrar por tipo (para TabularDataSet)
+        if triggered == 'dropdown-tipo':
+            if tipo_sel in (None, 'ALL'):
+                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+            # tipo_sel se corresponde con campo type en measurement meta.
+            # Para simplificar, filtramos labels que contengan el tipo en lowercase (recomendable: indexar)
+            opciones_filtradas = [opt for opt in opciones_base if tipo_sel.lower() in opt['label'].lower()]
+            return opciones_filtradas, seleccionados or [], 'ALL', "", tipo_sel, "active-filter", ""
+
+        # fallback
+        return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+# callbacks/grafico_temporal.py
+import plotly.graph_objects as go
+
+def actualizar_grafico(columnas_seleccionadas, relayout_data, df_plot, x_timer, format_label_with_unit):
+    """
+    Renderiza el gráfico temporal utilizando df_plot ya cargado desde cache (no desde DuckDB).
+    """
+    if not columnas_seleccionadas:
+        fig = go.Figure()
+        fig.update_layout(title="Selecciona columnas")
+        return fig
+
+    fig = go.Figure()
+
+    # Añadir una línea por cada columna seleccionada
+    for col in columnas_seleccionadas:
+        if col not in df_plot.columns:
+            continue  # seguridad adicional
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_plot[x_timer],
+                y=df_plot[col],
+                mode="lines",
+                name=format_label_with_unit(col),
+            )
+        )
+
+    # Ajustes de layout
+    fig.update_layout(
+        xaxis=dict(title=x_timer),
+        yaxis=dict(title="Valores"),
+        height=600,
+        margin=dict(l=40, r=20, t=40, b=40)
+    )
+
+    return fig
+# utils/cache_config.py
+import atexit
+import logging
+import signal
+from flask_caching import Cache
+
+def init_cache(app):
+    cache = Cache(app.server, config={
+        "CACHE_TYPE": "SimpleCache",   # en memoria
+        "CACHE_DEFAULT_TIMEOUT": 86400 # 24h
+    })
+    return cache
+
+# --- Función para limpiar la caché ---
+def limpiar_cache(cache = None):
+    try:
+        cache.clear()
+        logging.info("🧹 Caché limpiada correctamente.")
+    except Exception as e:
+        logging.warning(f"No se pudo limpiar la caché: {e}")
+
+
+# --- Manejar Ctrl+C o SIGTERM ---
+def handle_exit_signal(signum, frame):
+    logging.info("🛑 Señal de cierre detectada. Limpiando caché...")
+    limpiar_cache()
+    exit(0)
+
+
+
+def cache_config(cache):
+    # cache = init_cache(app)
+
+    # Registrar manejadores de señal para limpiar caché al salir
+    signal.signal(signal.SIGINT, handle_exit_signal)  # Ctrl+C
+    signal.signal(signal.SIGTERM, handle_exit_signal) # Terminación
+
+    # Registrar limpieza de caché al salir normalmente
+    atexit.register(limpiar_cache, cache)
+
+    # return cache
