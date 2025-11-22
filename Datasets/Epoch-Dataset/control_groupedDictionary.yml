@@ -1,0 +1,75 @@
+components:
+  Battery_Active_Power:
+    name: Battery_Active_Power
+    measurements:
+      raw:
+        columns: [Q05, Q10, Q20, Q50, Q90, Q95]
+        columns_encoded: [1, 2, 3, 4, 5, 6]
+      from_to:
+        columns: [Q05_to_Q10, Q05_to_Q20, Q05_to_Q50, Q05_to_Q90, Q05_to_Q95, Q10_to_Q05,
+          Q10_to_Q20, Q10_to_Q50, Q10_to_Q90, Q10_to_Q95, Q20_to_Q05, Q20_to_Q10,
+          Q20_to_Q50, Q20_to_Q90, Q20_to_Q95, Q50_to_Q05, Q50_to_Q10, Q50_to_Q20,
+          Q50_to_Q90, Q50_to_Q95, Q90_to_Q05, Q90_to_Q10, Q90_to_Q20, Q90_to_Q50,
+          Q90_to_Q95, Q95_to_Q05, Q95_to_Q10, Q95_to_Q20, Q95_to_Q50, Q95_to_Q90]
+        columns_encoded: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+          22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+  GE_Active_Power:
+    name: GE_Active_Power
+    measurements:
+      raw:
+        columns: [Q05, Q10, Q20, Q50, Q90, Q95]
+        columns_encoded: [37, 38, 39, 40, 41, 42]
+      from_to:
+        columns: [Q05_to_Q10, Q05_to_Q20, Q05_to_Q50, Q05_to_Q90, Q05_to_Q95, Q10_to_Q05,
+          Q10_to_Q20, Q10_to_Q50, Q10_to_Q95, Q20_to_Q05, Q20_to_Q10, Q20_to_Q50,
+          Q20_to_Q90, Q20_to_Q95, Q50_to_Q05, Q50_to_Q10, Q50_to_Q20, Q50_to_Q90,
+          Q50_to_Q95, Q90_to_Q05, Q90_to_Q20, Q90_to_Q50, Q90_to_Q95, Q95_to_Q05,
+          Q95_to_Q10, Q95_to_Q20, Q95_to_Q50, Q95_to_Q90]
+        columns_encoded: [43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+          57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70]
+  MG-LV-MSB_AC_Voltage:
+    name: MG-LV-MSB_AC_Voltage
+    measurements:
+      raw:
+        columns: [Q05, Q10, Q20, Q50, Q90, Q95]
+        columns_encoded: [71, 72, 73, 74, 75, 76]
+      from_to:
+        columns: [Q05_to_Q10, Q05_to_Q20, Q05_to_Q50, Q05_to_Q95, Q10_to_Q05, Q10_to_Q20,
+          Q10_to_Q50, Q20_to_Q05, Q20_to_Q10, Q20_to_Q50, Q20_to_Q90, Q20_to_Q95,
+          Q50_to_Q05, Q50_to_Q10, Q50_to_Q20, Q50_to_Q90, Q50_to_Q95, Q90_to_Q10,
+          Q90_to_Q20, Q90_to_Q50, Q90_to_Q95, Q95_to_Q20, Q95_to_Q50, Q95_to_Q90]
+        columns_encoded: [77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+          91, 92, 93, 94, 95, 96, 97, 98, 99, 100]
+  MG-LV-MSB_Frequency:
+    name: MG-LV-MSB_Frequency
+    measurements:
+      raw:
+        columns: [Q05, Q20, Q50, Q95]
+        columns_encoded: [101, 102, 103, 104]
+      from_to:
+        columns: [Q05_to_Q20, Q05_to_Q50, Q05_to_Q95, Q20_to_Q05, Q20_to_Q50, Q20_to_Q95,
+          Q50_to_Q05, Q50_to_Q20, Q50_to_Q95, Q95_to_Q05, Q95_to_Q20, Q95_to_Q50]
+        columns_encoded: [105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116]
+  PVPCS_Active_Power:
+    name: PVPCS_Active_Power
+    measurements:
+      raw:
+        columns: [Q05, Q50, Q90, Q95]
+        columns_encoded: [117, 118, 119, 120]
+      from_to:
+        columns: [Q05_to_Q50, Q50_to_Q05, Q50_to_Q90, Q50_to_Q95, Q90_to_Q05, Q90_to_Q50,
+          Q90_to_Q95, Q95_to_Q05, Q95_to_Q50, Q95_to_Q90]
+        columns_encoded: [121, 122, 123, 124, 125, 126, 127, 128, 129, 130]
+  Receiving_Point_AC_Voltage:
+    name: Receiving_Point_AC_Voltage
+    measurements:
+      raw:
+        columns: [Q05, Q10, Q20, Q50, Q95]
+        columns_encoded: [131, 132, 133, 134, 135]
+      from_to:
+        columns: [Q05_to_Q10, Q05_to_Q20, Q05_to_Q50, Q10_to_Q05, Q10_to_Q20, Q10_to_Q50,
+          Q10_to_Q95, Q20_to_Q05, Q20_to_Q10, Q20_to_Q50, Q20_to_Q95, Q50_to_Q05,
+          Q50_to_Q10, Q50_to_Q20, Q50_to_Q95, Q95_to_Q05, Q95_to_Q10, Q95_to_Q20,
+          Q95_to_Q50]
+        columns_encoded: [136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147,
+          148, 149, 150, 151, 152, 153, 154]

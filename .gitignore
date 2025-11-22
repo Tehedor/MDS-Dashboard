@@ -10,9 +10,15 @@ __pycache__/
 utils/debug/
 
 
-Datasets/**
+# Datasets/**
 !Datasets/**/
 !Datasets/**/*.Template/*
 !Datasets/**/.Template/*
+Datasets/**/raw/*
+Datasets/**/processed/*
+!Datasets/**/raw/.gitkeep
+!Datasets/**/processed/.gitkeep
+
+
 
 !.gitkeep
