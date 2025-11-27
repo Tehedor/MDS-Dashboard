@@ -10,4 +10,17 @@ metadata:
   
 
 pipelineCleanData:
-  run_enabled: false
+  run_enabled: true
+
+  available_functions:
+    - merge_all_datasets:
+        enabled: true
+        module: "utils.clean_functions._0_merge_datasets"
+        func: "merge_all_datasets"
+        description: "Cargar CSV de eventos"
+
+    - event_convert_timestamp:
+        enabled: true
+        module: "utils.clean_functions._9_event_convert_timestamp"
+        func: "event_convert_timestamp"
+        description: "Convertir timestamp a datetime para eventos"

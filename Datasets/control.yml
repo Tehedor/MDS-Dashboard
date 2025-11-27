@@ -1,0 +1,46 @@
+version: "1.0"
+description: "Control maestro de los datasets del sistema"
+
+###############################################################
+# 1️⃣ SUBDATASETS: cada dataset definido de forma independiente
+###############################################################
+
+subdatasets:
+
+  MDS-Dataset:
+    type: tabular
+    path: "MDS-Dataset"
+    control_file: "control_dataset.yml"
+    timestamp_col: "Timestamp"
+
+  Epoch-Dataset:
+    type: event-encoded
+    path: "Epoch-Dataset"
+    control_file: "control_dataset.yml"
+    timestamp_col: "Timestamp"
+    merge_on: "Timestamp"
+    strategy: "sparse-columns"
+
+
+###############################################################
+# 2️⃣ DATASETS FINALES / COMPUESTOS
+#    Cada uno define QUÉ subdatasets lo forman
+###############################################################
+
+Datasets:
+
+  MDS-Complete:
+    subdatasets:
+      main: "MDS-Dataset"
+      epoch: "Epoch-Dataset"
+  
+  MDS-Dataset:
+    subdatasets:
+      main: "MDS-Dataset"
+      epoch: null
+
+###############################################################
+# 3️⃣ Dataset activado por defecto en la app
+###############################################################
+
+default_dataset: "MDS-Complete"

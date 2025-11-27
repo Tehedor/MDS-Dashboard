@@ -8,17 +8,22 @@ __pycache__/
 .DS_Store
 .ipynb_checkpoints
 utils/debug/
+*.parquet
 
 
 # Datasets/**
 !Datasets/**/
 !Datasets/**/*.Template/*
 !Datasets/**/.Template/*
+!Datasets/**/*.processed-composed/.gitkeep
+!Datasets/**/.processed-composed/.gitkeep
 Datasets/**/raw/*
 Datasets/**/processed/*
 !Datasets/**/raw/.gitkeep
 !Datasets/**/processed/.gitkeep
 
+
+debug/*.txt
 
 
 !.gitkeep

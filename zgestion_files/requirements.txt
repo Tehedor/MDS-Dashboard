@@ -5,6 +5,8 @@ plotly==6.4.0
 pyyaml==6.0.3
 tqdm==4.67.1
 pykwalify==1.8.0
+fastparquet==2024.11.0
+pyarrow==22.0.0
 
 # High-performance resampling
 plotly-resampler==0.11.0
