@@ -1,117 +1,161 @@
-# callbacks/filtros.py
 from dash import ctx
 from dash.dependencies import Input, Output, State
-from dash import no_update
-from utils.helpers import build_checklist_options_from_components
+from utils.helpers import build_checklist_options, build_tipo_options, get_tabular_type
+
 
 def registrar_callbacks_filtros(app):
-    """
-    Callback único que gestiona:
-      - dropdown-componentes
-      - dropdown-tipo
-      - boton-mostrar-seleccionados
-      - dataset-selector (para reinicializar al cambiar dataset)
-    Este callback produce checklist.options + checklist.value (única fuente), evitando
-    outputs duplicados en la app.
-    """
 
     @app.callback(
         [
-            Output('checklist-columnas', 'options'),
-            Output('checklist-columnas', 'value'),
-            Output('dropdown-componentes', 'value'),
-            Output('dropdown-componentes', 'className'),
-            Output('dropdown-tipo', 'value'),
-            Output('dropdown-tipo', 'className'),
-            Output('boton-mostrar-seleccionados', 'className'),
+            Output("checklist-columnas", "options"),
+            Output("checklist-columnas", "value"),
+
+            Output("dropdown-componentes", "options"),
+            Output("dropdown-componentes", "value"),
+            Output("dropdown-componentes", "className"),
+
+            Output("dropdown-tipo", "options"),
+            Output("dropdown-tipo", "value"),
+            Output("dropdown-tipo", "className"),
+
+            Output("boton-mostrar-seleccionados", "className"),
         ],
         [
-            Input('dropdown-componentes', 'value'),
-            Input('dropdown-tipo', 'value'),
-            Input('boton-mostrar-seleccionados', 'n_clicks'),
-            Input('dataset-selector', 'value'),  # reinicializa al cambiar dataset
+            # ❗ AHORA ESTOS SON INPUTS, NO SOLO TRIGGERS
+            Input("current-components", "data"),
+            Input("current-columns", "data"),
+
+            Input("dropdown-componentes", "value"),
+            Input("dropdown-tipo", "value"),
+            Input("boton-mostrar-seleccionados", "n_clicks"),
+            Input("dataset-selector", "value"),
         ],
         [
-            State('checklist-columnas', 'value'),
-            State('current-config', 'data'),
-            State('current-components', 'data'),
-            State('current-columns', 'data'),
-            State('boton-mostrar-seleccionados', 'className'),
+            State("checklist-columnas", "value"),
+            State("boton-mostrar-seleccionados", "className"),
         ],
         prevent_initial_call=False
     )
-    def actualizar_checklist(componente_sel, tipo_sel, n_clicks, dataset_name,
-                              seleccionados, current_config, components_dict, cols, boton_clase):
-        """
-        - Cuando dataset_name cambia -> debemos re-generar options base y devolver defaults.
-        - Cuando dropdowns o botón cambian -> filtrar opciones sobre la base.
-        """
+    def actualizar(
+        components_meta, cols_all,
+        comp_sel, tipo_sel, n_clicks, dataset,
+        seleccionados, boton_clase
+    ):
 
-        triggered = ctx.triggered_id
+        trigger = ctx.triggered_id
 
-        components_dict = components_dict or {}
-        cols = cols or []
-        current_config = current_config or {}
+        # 🚀🔥 CARGA REAL → primera vez que llegan datos desde el dataset
+        if trigger in ("current-components", "current-columns"):
+            if not components_meta or not cols_all:
+                return [], [], [{"label": "Todos", "value": "ALL"}], "ALL", "", \
+                       [{"label": "Todos", "value": "ALL"}], "ALL", "", ""
 
-        # dataset_type viene del config almacenado
-        dataset_type = current_config.get("metadata", {}).get("type") if current_config else None
+            opciones_base = build_checklist_options(cols_all)
 
-        # Construir options base
-        opciones_base = build_checklist_options_from_components(components_dict, dataset_type, cols)
+            # componentes
+            componentes_opts = [{'label': 'Todos', 'value': 'ALL'}] + [
+                {"label": comp["name"], "value": comp_id}
+                for comp_id, comp in components_meta.items()
+                if comp_id.lower() != "timestamp"
+            ]
 
-        # Si no hay opciones base -> fallback con columnas reales
-        if not opciones_base:
-            opciones_base = [{"label": c, "value": c} for c in cols if c.lower() != "timestamp"]
+            # tipos
+            tipos = build_tipo_options(components_meta)
+            tipos = [t for t in tipos if t["value"] not in ("tabular", "tiempo")]
+            tipos.insert(0, {"label": "Todos", "value": "ALL"})
 
-        # ---------- Caso: cambio de dataset (o carga inicial) ----------
-        if triggered == 'dataset-selector' or triggered is None:
-            # Resetar todo al cambio de dataset
             default_value = [opciones_base[0]["value"]] if opciones_base else []
-            return opciones_base, default_value, 'ALL', "", 'ALL', "", ""
 
-        # ---------- Caso: boton "Mostrar seleccionados" ----------
-        if triggered == 'boton-mostrar-seleccionados':
-            boton_activo = boton_clase == "active-filter"
-            if boton_activo:
-                # Desactivar: volver a mostrar todas las opciones
-                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
-            else:
-                # Activar: mostrar solo las opciones actualmente seleccionadas
-                if seleccionados:
-                    opciones_filtradas = [opt for opt in opciones_base if opt['value'] in seleccionados]
-                    return opciones_filtradas, seleccionados, 'ALL', "", 'ALL', "", "active-filter"
-                else:
-                    # no hay seleccionados -> no cambiar
-                    return opciones_base, [], 'ALL', "", 'ALL', "", ""
+            return (
+                opciones_base, default_value,
+                componentes_opts, "ALL", "",
+                tipos, "ALL", "",
+                ""
+            )
 
-        # ---------- Caso: filtro por componente ----------
-        if triggered == 'dropdown-componentes':
-            if componente_sel in (None, 'ALL'):
-                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
-            # Filtrar por prefijo "comp_id::" o por label que contenga nombre del componente
-            opciones_filtradas = [opt for opt in opciones_base if opt['value'].startswith(f"{componente_sel}::") or f"({componente_sel})" in opt['label']]
-            return opciones_filtradas, seleccionados or [], componente_sel, "active-filter", 'ALL', "", ""
+        # ------------------------------------------------------------------
+        # 🔽 A partir de aquí manejo normal de filtros
+        # ------------------------------------------------------------------
 
-        # ---------- Caso: filtro por tipo ----------
-        if triggered == 'dropdown-tipo':
-            if tipo_sel in (None, 'ALL'):
-                return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
-            # Filtrar por tipo: buscamos en labels o en metadata del components_dict
-            opciones_filtradas = []
-            # First attempt: label matching
+        opciones_base = build_checklist_options(cols_all)
+
+        # opciones de componentes
+        componentes_opts = [{'label': 'Todos', 'value': 'ALL'}] + [
+            {"label": comp["name"], "value": comp_id}
+            for comp_id, comp in components_meta.items()
+            if comp_id.lower() != "timestamp"
+        ]
+
+        # opciones tipo
+        tipos = build_tipo_options(components_meta)
+        tipos = [t for t in tipos if t["value"] not in ("tabular", "tiempo")]
+        tipos.insert(0, {"label": "Todos", "value": "ALL"})
+
+        # ------------------------------------------------------------------
+        # Botón seleccionados
+        # ------------------------------------------------------------------
+        if trigger == "boton-mostrar-seleccionados":
+            active = boton_clase == "active-filter"
+
+            if active:  # apagar
+                return (
+                    opciones_base, seleccionados or [],
+                    componentes_opts, "ALL", "",
+                    tipos, "ALL", "",
+                    ""
+                )
+            else:  # encender
+                filtradas = [o for o in opciones_base if o["value"] in seleccionados]
+                return (
+                    filtradas, seleccionados or [],
+                    componentes_opts, "ALL", "",
+                    tipos, "ALL", "",
+                    "active-filter"
+                )
+
+        # ------------------------------------------------------------------
+        # Filtro por componente
+        # ------------------------------------------------------------------
+        if trigger == "dropdown-componentes" and comp_sel != "ALL":
+            filtradas = [
+                o for o in opciones_base
+                if o["value"].startswith(f"{comp_sel}::")
+            ]
+            return (
+                filtradas, seleccionados or [],
+                componentes_opts, comp_sel, "active-filter",
+                tipos, "ALL", "",
+                boton_clase
+            )
+
+        # ------------------------------------------------------------------
+        # Filtro por tipo real
+        # ------------------------------------------------------------------
+        if trigger == "dropdown-tipo" and tipo_sel != "ALL":
+            filtradas = []
             for opt in opciones_base:
-                if tipo_sel.lower() in opt['label'].lower():
-                    opciones_filtradas.append(opt)
-            # If nothing found by label, try components_dict meta (tabular)
-            if not opciones_filtradas:
-                for comp_id, comp in components_dict.items():
-                    for meas_key, meas_meta in comp.get("measurements", {}).items():
-                        if meas_meta.get("type") == tipo_sel:
-                            # find corresponding option(s)
-                            for opt in opciones_base:
-                                if opt['value'] == meas_key or opt['value'].endswith(f"::{meas_key}"):
-                                    opciones_filtradas.append(opt)
-            return opciones_filtradas, seleccionados or [], 'ALL', "", tipo_sel, "active-filter", ""
+                meta = opt["meta"]
+                tipo = meta.get("type")
 
-        # fallback
-        return opciones_base, seleccionados or [], 'ALL', "", 'ALL', "", ""
+                # tipo tabular → transformar a tipo real
+                if tipo == "tabular":
+                    tipo_real = get_tabular_type(meta, components_meta)
+                    if tipo_real == tipo_sel:
+                        filtradas.append(opt)
+
+                elif tipo == tipo_sel:   # raw / from_to
+                    filtradas.append(opt)
+
+            return (
+                filtradas, seleccionados or [],
+                componentes_opts, comp_sel or "ALL", "",
+                tipos, tipo_sel, "active-filter",
+                boton_clase
+            )
+
+        return (
+            opciones_base, seleccionados or [],
+            componentes_opts, comp_sel or "ALL", "",
+            tipos, tipo_sel or "ALL", "",
+            boton_clase
+        )

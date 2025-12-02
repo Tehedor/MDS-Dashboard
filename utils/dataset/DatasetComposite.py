@@ -1,11 +1,10 @@
+# utils/dataset/DatasetComposite.py
 import logging
-import json
-from pathlib import Path
 import pandas as pd
-import yaml
 
 
 class DatasetComposite:
+
     def __init__(self, name, registry, subdatasets):
         self.name = name
         self.registry = registry
@@ -13,198 +12,252 @@ class DatasetComposite:
 
         logging.info(f"🧩 Iniciando DatasetComposite '{name}'")
 
-        # Carpeta donde guardamos los parquets compuestos
+        # carpeta de salida para parquets compuestos
         self.composed_dir = registry.root / ".processed-composed"
         self.composed_dir.mkdir(exist_ok=True)
         self.composed_parquet = self.composed_dir / f"{name}.parquet"
 
-        # ------------------------------------------------------------
-        # 🚀 Si el parquet compuesto ya existe → cargarlo
-        # ------------------------------------------------------------
+        # ========================================================
+        #   SI EL PARQUET YA EXISTE → cargar y salir
+        # ========================================================
         if self.composed_parquet.exists():
-            logging.info(f"🧩 Cargando parquet compuesto: {self.composed_parquet}")
+            logging.info(f"🧩 Cargando parquet compuesto existente: {self.composed_parquet}")
 
             self.df = pd.read_parquet(self.composed_parquet)
 
-            # reconstruir main y secondary
+            # reconstruir referencias
             main_name = subdatasets["main"]
             self.main = registry.subdatasets[main_name]
-            self.secondary = {
-                k: registry.subdatasets[v]
-                for k, v in subdatasets.items()
-                if k != "main" and v
-            }
 
-            # reconstruir sets de eventos
-            self.raw_codes, self.from_to_codes = self._load_grouped_dictionary()
-            self.event_dict = self._build_event_dict()
+            self.secondary = {}
+            for key, sd_name in subdatasets.items():
+                if key == "main":
+                    continue
+
+                if sd_name is None:
+                    logging.info(f"ℹ️ Subdataset '{key}' = None → ignorado en composite '{self.name}'")
+                    continue
+
+                if sd_name not in registry.subdatasets:
+                    logging.warning(f"⚠️ Subdataset '{sd_name}' no existe en registry. Ignorado.")
+                    continue
+
+                self.secondary[key] = registry.subdatasets[sd_name]
 
             return
 
-        # ------------------------------------------------------------
-        # 🚀 Si no existe → construir composite entero
-        # ------------------------------------------------------------
+        # ========================================================
+        #   SI NO EXISTE → construir composite desde cero
+        # ========================================================
         logging.info(f"🧩 Construyendo composite desde cero: {name}")
 
+        # main dataset
         main_name = subdatasets["main"]
         self.main = registry.subdatasets[main_name]
 
-        self.secondary = {
-            k: registry.subdatasets[v]
-            for k, v in subdatasets.items()
-            if k != "main" and v
-        }
+        # otros subdatasets (con soporte para null)
+        self.secondary = {}
+        for key, sd_name in subdatasets.items():
+            if key == "main":
+                continue
 
-        # separar tipos de eventos
-        self.raw_codes, self.from_to_codes = self._load_grouped_dictionary()
+            if sd_name is None:
+                logging.info(f"ℹ️ Subdataset '{key}' = None → no se mergea en composite '{self.name}'")
+                continue
 
-        # construir df final
+            if sd_name not in registry.subdatasets:
+                logging.warning(f"⚠️ Subdataset '{sd_name}' declarado pero NO existe. Ignorado.")
+                continue
+
+            self.secondary[key] = registry.subdatasets[sd_name]
+
+        # construir dataframe final
         self.df = self._build_combined_df()
 
-        # dividir en state/from_to
-        self._split_event_types()
-
-        # construir diccionario de eventos
-        self.event_dict = self._build_event_dict()
-
-        # guardar parquet compuesto
+        # guardar parquet final
         self.df.to_parquet(self.composed_parquet, index=False)
         logging.info(f"🧩 Parquet compuesto guardado: {self.composed_parquet}")
 
-    # ---------------------------------------------------------------------
-    def _load_grouped_dictionary(self):
-        path = self.registry.root / "Epoch-Dataset" / "control_groupedDictionary.yml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-
-        raw_codes = set()
-        from_to_codes = set()
-
-        for comp, data in cfg["components"].items():
-            meas = data["measurements"]
-            raw_codes.update(meas["raw"]["columns_encoded"])
-            from_to_codes.update(meas["from_to"]["columns_encoded"])
-
-        return raw_codes, from_to_codes
-
-    # ---------------------------------------------------------------------
+    # =====================================================================
+    #   MERGE DIRECTO SIN PROCESAR COLUMNAS
+    # =====================================================================
     def _build_combined_df(self):
+        """
+        Combina:
+        - el subdataset principal (tabular)
+        - los subdatasets secundarios
+        Hace simple LEFT MERGE por timestamp.
+
+        NO crea columnas nuevas.
+        NO procesa nada.
+        """
+
         df = self.main.df.copy()
 
         for key, sd in self.secondary.items():
-            logging.info(f"🧩 Integrando '{key}' (type={sd.type})")
-            if sd.type == "event-encoded":
-                df = self._merge_event_encoded(df, sd)
-            else:
-                df = df.merge(
-                    sd.df,
-                    on=sd.timestamp_col,
-                    how="left",
-                    suffixes=("", f"_{key}")
-                )
-            logging.info(f"🧩   → filas={len(df)}, cols={len(df.columns)}")
+            logging.info(f"🧩 Mergeando '{key}' (type={sd.type})")
+
+            df = df.merge(
+                sd.df,
+                on=sd.timestamp_col,
+                how="left",
+                suffixes=("", f"_{key}")
+            )
+
+            logging.info(f"   → filas={len(df)}, columnas={len(df.columns)}")
 
         return df
 
-    # ---------------------------------------------------------------------
-    def _merge_event_encoded(self, df_main, sd):
-        ts_col = sd.timestamp_col
-
-        df_evt = sd.df[[ts_col, "event_code"]].copy()
-        df_evt = df_evt.sort_values(ts_col)
-        df_main = df_main.sort_values(ts_col)
-
-        logging.info("🧩 agrupando eventos…")
-        grouped = (
-            df_evt.groupby(ts_col)["event_code"]
-                .agg(list)
-                .rename("events")
-                .reset_index()
-        )
-
-        out = df_main.merge(grouped, on=ts_col, how="left")
-
-        # vectorizado seguro
-        out["events"] = out["events"].apply(
-            lambda x: x if isinstance(x, list) else []
-        )
-
-        return out
-
-    # ---------------------------------------------------------------------
-    def _split_event_types(self):
-        """
-        Crea:
-        - events_state     → eventos RAW ordenados de menor a mayor
-        - events_from_to   → eventos FROM_TO ordenados de menor a mayor
-        """
-
-        # 🛑 Si no hay eventos, salir
-        if "events" not in self.df.columns:
-            logging.info(f"🧩 Dataset '{self.name}' no contiene eventos → skip split_event_types()")
-            return
-
-        df = self.df
-
-        # --- STATE EVENTS ---
-        df["events_state"] = df["events"].apply(
-            lambda lst: sorted(
-                [e for e in lst if e in self.raw_codes]
-            )
-        )
-
-        # --- FROM_TO EVENTS ---
-        df["events_from_to"] = df["events"].apply(
-            lambda lst: sorted(
-                [e for e in lst if e in self.from_to_codes]
-            )
-        )
-
-        # Ya no necesitamos la columna original
-        df.drop(columns=["events"], inplace=True)
-
-    # ---------------------------------------------------------------------
-    def _build_event_dict(self):
-        final = {}
-
-        for sd in self.secondary.values():
-            if sd.type != "event-encoded":
-                continue
-
-            dict_path = sd.path / "Events_Dictionary.json"
-            with open(dict_path, "r") as f:
-                raw = json.load(f)
-
-            mapping = {code: name for name, code in raw.items()}
-
-            for code, name in mapping.items():
-                var = name.split("_Q")[0] if "_Q" in name else name
-
-                if code in self.raw_codes:
-                    etype = "state"
-                elif code in self.from_to_codes:
-                    etype = "from_to"
-                else:
-                    etype = "unknown"
-
-                final[code] = {
-                    "name": name,
-                    "var": var,
-                    "type": etype
-                }
-
-        return final
-
-    # ---------------------------------------------------------------------
-    def get_event_dict(self):
-        return self.event_dict
-
-    # ---------------------------------------------------------------------
+    # =====================================================================
+    #   INFO DEL DATASET
+    # =====================================================================
     def info(self):
         return {
             "name": self.name,
             "rows": len(self.df),
             "cols": list(self.df.columns),
-            "has_events": "events_state" in self.df.columns,
-            "num_event_codes": len(self.event_dict),
+            "num_columns": len(self.df.columns)
+        }
+
+    # =====================================================================
+    #   GET ALL COLUMNS → tabular + events (basado solo en columnas reales)
+    # =====================================================================
+    def get_all_columns(self):
+        """
+        Devuelve TODA la metadata necesaria para la UI:
+        - columnas tabulares
+        - columnas de eventos (raw / from_to)
+        - agrupación por componentes
+        - mapa de nombres amigables
+        """
+
+        df_cols = list(self.df.columns)
+
+        # ============================================================
+        # 1) TABULARES (del main dataset)
+        # ============================================================
+        tabular_cols = []
+        tabular_measure_map = {}
+
+        main_comp_meta = {}
+        if hasattr(self.main, "componentes"):
+            main_comp_meta = self.main.componentes.get("components", {})
+
+        for comp_id, comp_data in main_comp_meta.items():
+            meas = comp_data.get("measurements", {})
+            for meas_key, meas_info in meas.items():
+
+                display = meas_info.get("display_name", meas_key)
+
+                if display in df_cols:
+                    tabular_cols.append({
+                        "name": display,
+                        "type": "tabular",
+                        "component": comp_id
+                    })
+                    tabular_measure_map[display] = comp_id
+
+        # ============================================================
+        # 2) EVENTOS (YA NO SE TOMAN DE COLUMNAS → SE OBTIENEN DEL YAML)
+        # ============================================================
+
+        event_raw = []
+        event_from_to = []
+        by_component = {}
+
+        # 2.1 detectar el subdataset event-encoded que existe en el composite
+        event_sd = None
+        for sd in self.secondary.values():
+            if sd.type == "event-encoded":
+                event_sd = sd
+                break
+
+        if event_sd is None:
+            # no hay eventos en este dataset
+            return {
+                "tabular": tabular_cols,
+                "event_raw": [],
+                "event_from_to": [],
+                "all": tabular_cols,
+                "by_component": {},
+                "components_meta": main_comp_meta,
+                "component_display_map": {
+                    cid: cdata.get("name", cid)
+                    for cid, cdata in main_comp_meta.items()
+                }
+            }
+
+        yaml_components = event_sd.componentes.get("components", {})
+
+        # ============================
+        # 2.2 RECORRER YAML AGRUPADO
+        # ============================
+        for comp_id, comp_data in yaml_components.items():
+
+            measurements = comp_data.get("measurements", {})
+            for meas_key, meas_info in measurements.items():
+
+                meas_name = meas_info.get("name", meas_key)
+                meas_blocks = meas_info.get("measurements", {})
+
+                for block_key, block_data in meas_blocks.items():
+
+                    encoded = block_data.get("columns_encoded", [])
+                    if not encoded:
+                        continue
+
+                    base_item = {
+                        "component": comp_id,
+                        "measurement": meas_name,
+                        "codes": encoded,
+                    }
+
+                    if block_key.endswith("-raw"):
+                        item = {
+                            **base_item,
+                            "name": f"{meas_name}_raw",
+                            "type": "raw",
+                        }
+                        event_raw.append(item)
+                        by_component.setdefault(comp_id, []).append(item)
+
+                    elif block_key.endswith("-from_to"):
+                        item = {
+                            **base_item,
+                            "name": f"{meas_name}_from_to",
+                            "type": "from_to",
+                        }
+                        event_from_to.append(item)
+                        by_component.setdefault(comp_id, []).append(item)
+
+        # ============================================================
+        # 3) COMPONENTES META (mezcla tabular + eventos)
+        # ============================================================
+        components_meta = {}
+
+        # primero tabular
+        for comp_id, comp_data in main_comp_meta.items():
+            components_meta[comp_id] = comp_data
+
+        # añadir los de eventos si no existen en tabular
+        for comp_id, comp_data in yaml_components.items():
+            if comp_id not in components_meta:
+                components_meta[comp_id] = comp_data
+
+        component_display_map = {
+            cid: cdata.get("name", cid)
+            for cid, cdata in components_meta.items()
+        }
+
+        # ============================================================
+        # 4) SALIDA FINAL
+        # ============================================================
+        return {
+            "tabular": tabular_cols,
+            "event_raw": event_raw,
+            "event_from_to": event_from_to,
+            "all": tabular_cols + event_raw + event_from_to,
+            "by_component": by_component,
+            "components_meta": components_meta,
+            "component_display_map": component_display_map,
         }

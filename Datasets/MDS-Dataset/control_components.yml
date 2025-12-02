@@ -1,3 +1,4 @@
+# Datasets/MDS-Dataset/control_components.yml
 components:  
   MG_Bus:
     name: "MG-LV-MSB (Bus Principal de Baja Tensión)"
@@ -96,12 +97,14 @@ components:
       Inlet_Temperature_of_Chilled_Water:
         unit: "°C"
         description: "Temperatura del agua fría a la entrada"
-        display_name: "T_Inlet_Temperature_of_Chilled_Water"
+        # display_name: "T_Inlet_Temperature_of_Chilled_Water"
+        display_name: "Inlet_Temperature_of_Chilled_Water"
         type: "temperatura"
       Outlet_Temperature:
         unit: "°C"
         description: "Temperatura del agua fría a la salida"
-        display_name: "T_Outlet_Temperature"
+        # display_name: "T_Outlet_Temperature"
+        display_name: "Outlet_Temperature"
         type: "temperatura"
 
   Island_Mode:

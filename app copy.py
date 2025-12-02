@@ -52,22 +52,26 @@ registrar_callbacks_filtros(app)
 # Layout estático (evaluado una sola vez)
 # -------------------------------------------------------------
 def get_layout():
+    first_dataset = datasets_disponibles[0]  # el primero automáticamente
+
     return html.Div(
         [
             dcc.Store(id="current-config"),
             dcc.Store(id="current-components"),
             dcc.Store(id="current-columns"),
-            dcc.Store(id="cached-df"),   # DF serializado JSON
+            dcc.Store(id="cached-df"),
 
             serve_layout(
-                config=config_inicial,
-                datasets=datasets_disponibles,
+                config={},
+                datasets={name: {} for name in datasets_disponibles},
                 opciones_checklist=[],
                 columnas=[],
                 x_timer="Timestamp",
-            )
+                default_dataset=first_dataset,  # <-- lo añadimos
+            ),
         ]
     )
+
 
 # IMPORTANT: asignar layout evaluado (no la función) para evitar reevaluaciones
 app.layout = get_layout()

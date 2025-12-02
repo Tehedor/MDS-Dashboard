@@ -1,3 +1,4 @@
+# Datasets/control.yml
 version: "1.0"
 description: "Control maestro de los datasets del sistema"
 
@@ -35,6 +36,11 @@ Datasets:
       epoch: "Epoch-Dataset"
   
   MDS-Dataset:
+    subdatasets:
+      main: "MDS-Dataset"
+      epoch: null
+      
+  MDS-Dataset-V2:
     subdatasets:
       main: "MDS-Dataset"
       epoch: null

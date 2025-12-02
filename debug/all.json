@@ -1,0 +1,1099 @@
+{
+  "all_columns": {
+    "tabular": [
+      {
+        "name": "MG-LV-MSB_AC_Voltage",
+        "type": "tabular",
+        "component": "MG_Bus"
+      },
+      {
+        "name": "MG-LV-MSB_Frequency",
+        "type": "tabular",
+        "component": "MG_Bus"
+      },
+      {
+        "name": "Battery_Active_Power",
+        "type": "tabular",
+        "component": "Battery"
+      },
+      {
+        "name": "Battery_Active_Power_Set_Response",
+        "type": "tabular",
+        "component": "Battery"
+      },
+      {
+        "name": "GE_Active_Power",
+        "type": "tabular",
+        "component": "GE_Gas_Engine"
+      },
+      {
+        "name": "GE_Body_Active_Power",
+        "type": "tabular",
+        "component": "GE_Gas_Engine"
+      },
+      {
+        "name": "GE_Body_Active_Power_Set_Response",
+        "type": "tabular",
+        "component": "GE_Gas_Engine"
+      },
+      {
+        "name": "FC_Active_Power",
+        "type": "tabular",
+        "component": "FC_Fuel_Cell"
+      },
+      {
+        "name": "FC_Active_Power_FC_END_Set",
+        "type": "tabular",
+        "component": "FC_Fuel_Cell"
+      },
+      {
+        "name": "FC_Active_Power_FC_end_Set_Response",
+        "type": "tabular",
+        "component": "FC_Fuel_Cell"
+      },
+      {
+        "name": "PVPCS_Active_Power",
+        "type": "tabular",
+        "component": "PVPCS_Photovoltaic"
+      },
+      {
+        "name": "Receiving_Point_AC_Voltage",
+        "type": "tabular",
+        "component": "Receiving_Point"
+      },
+      {
+        "name": "Island_mode_MCCB_Active_Power",
+        "type": "tabular",
+        "component": "Island_Mode"
+      },
+      {
+        "name": "Island_mode_MCCB_AC_Voltage",
+        "type": "tabular",
+        "component": "Island_Mode"
+      },
+      {
+        "name": "Island_mode_MCCB_Frequency",
+        "type": "tabular",
+        "component": "Island_Mode"
+      }
+    ],
+    "event_raw": [
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_AC_Voltage",
+        "codes": [
+          71,
+          72,
+          73,
+          74,
+          75,
+          76
+        ],
+        "name": "MG-LV-MSB_AC_Voltage_raw",
+        "type": "raw"
+      },
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_Frequency",
+        "codes": [
+          101,
+          102,
+          103,
+          104
+        ],
+        "name": "MG-LV-MSB_Frequency_raw",
+        "type": "raw"
+      },
+      {
+        "component": "Battery",
+        "measurement": "Battery_Active_Power",
+        "codes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "name": "Battery_Active_Power_raw",
+        "type": "raw"
+      },
+      {
+        "component": "GE_Gas_Engine",
+        "measurement": "GE_Active_Power",
+        "codes": [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "name": "GE_Active_Power_raw",
+        "type": "raw"
+      },
+      {
+        "component": "PVPCS_Photovoltaic",
+        "measurement": "PVPCS_Active_Power",
+        "codes": [
+          117,
+          118,
+          119,
+          120
+        ],
+        "name": "PVPCS_Active_Power_raw",
+        "type": "raw"
+      },
+      {
+        "component": "Receiving_Point",
+        "measurement": "Receiving_Point_AC_Voltage",
+        "codes": [
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "name": "Receiving_Point_AC_Voltage_raw",
+        "type": "raw"
+      }
+    ],
+    "event_from_to": [
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_AC_Voltage",
+        "codes": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ],
+        "name": "MG-LV-MSB_AC_Voltage_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_Frequency",
+        "codes": [
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116
+        ],
+        "name": "MG-LV-MSB_Frequency_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "Battery",
+        "measurement": "Battery_Active_Power",
+        "codes": [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        "name": "Battery_Active_Power_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "GE_Gas_Engine",
+        "measurement": "GE_Active_Power",
+        "codes": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "name": "GE_Active_Power_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "PVPCS_Photovoltaic",
+        "measurement": "PVPCS_Active_Power",
+        "codes": [
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130
+        ],
+        "name": "PVPCS_Active_Power_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "Receiving_Point",
+        "measurement": "Receiving_Point_AC_Voltage",
+        "codes": [
+          136,
+          137,
+          138,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149,
+          150,
+          151,
+          152,
+          153,
+          154
+        ],
+        "name": "Receiving_Point_AC_Voltage_from_to",
+        "type": "from_to"
+      }
+    ],
+    "all": [
+      {
+        "name": "MG-LV-MSB_AC_Voltage",
+        "type": "tabular",
+        "component": "MG_Bus"
+      },
+      {
+        "name": "MG-LV-MSB_Frequency",
+        "type": "tabular",
+        "component": "MG_Bus"
+      },
+      {
+        "name": "Battery_Active_Power",
+        "type": "tabular",
+        "component": "Battery"
+      },
+      {
+        "name": "Battery_Active_Power_Set_Response",
+        "type": "tabular",
+        "component": "Battery"
+      },
+      {
+        "name": "GE_Active_Power",
+        "type": "tabular",
+        "component": "GE_Gas_Engine"
+      },
+      {
+        "name": "GE_Body_Active_Power",
+        "type": "tabular",
+        "component": "GE_Gas_Engine"
+      },
+      {
+        "name": "GE_Body_Active_Power_Set_Response",
+        "type": "tabular",
+        "component": "GE_Gas_Engine"
+      },
+      {
+        "name": "FC_Active_Power",
+        "type": "tabular",
+        "component": "FC_Fuel_Cell"
+      },
+      {
+        "name": "FC_Active_Power_FC_END_Set",
+        "type": "tabular",
+        "component": "FC_Fuel_Cell"
+      },
+      {
+        "name": "FC_Active_Power_FC_end_Set_Response",
+        "type": "tabular",
+        "component": "FC_Fuel_Cell"
+      },
+      {
+        "name": "PVPCS_Active_Power",
+        "type": "tabular",
+        "component": "PVPCS_Photovoltaic"
+      },
+      {
+        "name": "Receiving_Point_AC_Voltage",
+        "type": "tabular",
+        "component": "Receiving_Point"
+      },
+      {
+        "name": "Island_mode_MCCB_Active_Power",
+        "type": "tabular",
+        "component": "Island_Mode"
+      },
+      {
+        "name": "Island_mode_MCCB_AC_Voltage",
+        "type": "tabular",
+        "component": "Island_Mode"
+      },
+      {
+        "name": "Island_mode_MCCB_Frequency",
+        "type": "tabular",
+        "component": "Island_Mode"
+      },
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_AC_Voltage",
+        "codes": [
+          71,
+          72,
+          73,
+          74,
+          75,
+          76
+        ],
+        "name": "MG-LV-MSB_AC_Voltage_raw",
+        "type": "raw"
+      },
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_Frequency",
+        "codes": [
+          101,
+          102,
+          103,
+          104
+        ],
+        "name": "MG-LV-MSB_Frequency_raw",
+        "type": "raw"
+      },
+      {
+        "component": "Battery",
+        "measurement": "Battery_Active_Power",
+        "codes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "name": "Battery_Active_Power_raw",
+        "type": "raw"
+      },
+      {
+        "component": "GE_Gas_Engine",
+        "measurement": "GE_Active_Power",
+        "codes": [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "name": "GE_Active_Power_raw",
+        "type": "raw"
+      },
+      {
+        "component": "PVPCS_Photovoltaic",
+        "measurement": "PVPCS_Active_Power",
+        "codes": [
+          117,
+          118,
+          119,
+          120
+        ],
+        "name": "PVPCS_Active_Power_raw",
+        "type": "raw"
+      },
+      {
+        "component": "Receiving_Point",
+        "measurement": "Receiving_Point_AC_Voltage",
+        "codes": [
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "name": "Receiving_Point_AC_Voltage_raw",
+        "type": "raw"
+      },
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_AC_Voltage",
+        "codes": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ],
+        "name": "MG-LV-MSB_AC_Voltage_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "MG_Bus",
+        "measurement": "MG-LV-MSB_Frequency",
+        "codes": [
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116
+        ],
+        "name": "MG-LV-MSB_Frequency_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "Battery",
+        "measurement": "Battery_Active_Power",
+        "codes": [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        "name": "Battery_Active_Power_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "GE_Gas_Engine",
+        "measurement": "GE_Active_Power",
+        "codes": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "name": "GE_Active_Power_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "PVPCS_Photovoltaic",
+        "measurement": "PVPCS_Active_Power",
+        "codes": [
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130
+        ],
+        "name": "PVPCS_Active_Power_from_to",
+        "type": "from_to"
+      },
+      {
+        "component": "Receiving_Point",
+        "measurement": "Receiving_Point_AC_Voltage",
+        "codes": [
+          136,
+          137,
+          138,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149,
+          150,
+          151,
+          152,
+          153,
+          154
+        ],
+        "name": "Receiving_Point_AC_Voltage_from_to",
+        "type": "from_to"
+      }
+    ],
+    "by_component": {
+      "MG_Bus": [
+        {
+          "component": "MG_Bus",
+          "measurement": "MG-LV-MSB_AC_Voltage",
+          "codes": [
+            71,
+            72,
+            73,
+            74,
+            75,
+            76
+          ],
+          "name": "MG-LV-MSB_AC_Voltage_raw",
+          "type": "raw"
+        },
+        {
+          "component": "MG_Bus",
+          "measurement": "MG-LV-MSB_AC_Voltage",
+          "codes": [
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97,
+            98,
+            99,
+            100
+          ],
+          "name": "MG-LV-MSB_AC_Voltage_from_to",
+          "type": "from_to"
+        },
+        {
+          "component": "MG_Bus",
+          "measurement": "MG-LV-MSB_Frequency",
+          "codes": [
+            101,
+            102,
+            103,
+            104
+          ],
+          "name": "MG-LV-MSB_Frequency_raw",
+          "type": "raw"
+        },
+        {
+          "component": "MG_Bus",
+          "measurement": "MG-LV-MSB_Frequency",
+          "codes": [
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111,
+            112,
+            113,
+            114,
+            115,
+            116
+          ],
+          "name": "MG-LV-MSB_Frequency_from_to",
+          "type": "from_to"
+        }
+      ],
+      "Battery": [
+        {
+          "component": "Battery",
+          "measurement": "Battery_Active_Power",
+          "codes": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "name": "Battery_Active_Power_raw",
+          "type": "raw"
+        },
+        {
+          "component": "Battery",
+          "measurement": "Battery_Active_Power",
+          "codes": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36
+          ],
+          "name": "Battery_Active_Power_from_to",
+          "type": "from_to"
+        }
+      ],
+      "GE_Gas_Engine": [
+        {
+          "component": "GE_Gas_Engine",
+          "measurement": "GE_Active_Power",
+          "codes": [
+            37,
+            38,
+            39,
+            40,
+            41,
+            42
+          ],
+          "name": "GE_Active_Power_raw",
+          "type": "raw"
+        },
+        {
+          "component": "GE_Gas_Engine",
+          "measurement": "GE_Active_Power",
+          "codes": [
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70
+          ],
+          "name": "GE_Active_Power_from_to",
+          "type": "from_to"
+        }
+      ],
+      "PVPCS_Photovoltaic": [
+        {
+          "component": "PVPCS_Photovoltaic",
+          "measurement": "PVPCS_Active_Power",
+          "codes": [
+            117,
+            118,
+            119,
+            120
+          ],
+          "name": "PVPCS_Active_Power_raw",
+          "type": "raw"
+        },
+        {
+          "component": "PVPCS_Photovoltaic",
+          "measurement": "PVPCS_Active_Power",
+          "codes": [
+            121,
+            122,
+            123,
+            124,
+            125,
+            126,
+            127,
+            128,
+            129,
+            130
+          ],
+          "name": "PVPCS_Active_Power_from_to",
+          "type": "from_to"
+        }
+      ],
+      "Receiving_Point": [
+        {
+          "component": "Receiving_Point",
+          "measurement": "Receiving_Point_AC_Voltage",
+          "codes": [
+            131,
+            132,
+            133,
+            134,
+            135
+          ],
+          "name": "Receiving_Point_AC_Voltage_raw",
+          "type": "raw"
+        },
+        {
+          "component": "Receiving_Point",
+          "measurement": "Receiving_Point_AC_Voltage",
+          "codes": [
+            136,
+            137,
+            138,
+            139,
+            140,
+            141,
+            142,
+            143,
+            144,
+            145,
+            146,
+            147,
+            148,
+            149,
+            150,
+            151,
+            152,
+            153,
+            154
+          ],
+          "name": "Receiving_Point_AC_Voltage_from_to",
+          "type": "from_to"
+        }
+      ]
+    },
+    "components_meta": {
+      "MG_Bus": {
+        "name": "MG-LV-MSB (Bus Principal de Baja Tensión)",
+        "description": "Representa la tensión de la red externa, medida en el punto de conexión al sistema de la compañía eléctrica",
+        "measurements": {
+          "MG-LV-MSB_AC_Voltage": {
+            "unit": "V",
+            "description": "Tensión AC del bus principal",
+            "display_name": "MG-LV-MSB_AC_Voltage",
+            "type": "voltaje"
+          },
+          "MG-LV-MSB_Frequency": {
+            "unit": "Hz",
+            "description": "Frecuencia del bus principal",
+            "display_name": "MG-LV-MSB_Frequency",
+            "type": "frecuencia"
+          }
+        }
+      },
+      "Battery": {
+        "name": "Batería",
+        "description": "Potencia de la batería y respuesta del sistema a cambios de consigna",
+        "measurements": {
+          "Battery_Active_Power": {
+            "unit": "kW",
+            "description": "Potencia activa de la batería",
+            "display_name": "Battery_Active_Power",
+            "type": "potencia"
+          },
+          "Battery_Active_Power_Set_Response": {
+            "unit": "kW",
+            "description": "Respuesta del sistema a cambios de consigna de potencia",
+            "display_name": "Battery_Active_Power_Set_Response",
+            "type": "potencia"
+          }
+        }
+      },
+      "GE_Gas_Engine": {
+        "name": "GE (Motor de Gas)",
+        "description": "Potencia total consumida por la microred (medida GE), potencia del 'cuerpo' GE y respuesta a la consigna",
+        "measurements": {
+          "GE_Active_Power": {
+            "unit": "kW",
+            "description": "Potencia activa total del motor de gas",
+            "display_name": "GE_Active_Power",
+            "type": "potencia"
+          },
+          "GE_Body_Active_Power": {
+            "unit": "kW",
+            "description": "Potencia activa del cuerpo del motor",
+            "display_name": "GE_Body_Active_Power",
+            "type": "potencia"
+          },
+          "GE_Body_Active_Power_Set_Response": {
+            "unit": "kW",
+            "description": "Respuesta a la consigna de potencia del cuerpo GE",
+            "display_name": "GE_Body_Active_Power_Set_Response",
+            "type": "potencia"
+          }
+        }
+      },
+      "FC_Fuel_Cell": {
+        "name": "FC (Pila de Combustible)",
+        "description": "Potencia activa de la pila de combustible, setpoint y respuesta al lazo de control",
+        "measurements": {
+          "FC_Active_Power": {
+            "unit": "kW",
+            "description": "Potencia activa de la pila de combustible",
+            "display_name": "FC_Active_Power",
+            "type": "potencia"
+          },
+          "FC_Active_Power_FC_END_Set": {
+            "unit": "kW",
+            "description": "Setpoint de potencia para la pila de combustible",
+            "display_name": "FC_Active_Power_FC_END_Set",
+            "type": "potencia"
+          },
+          "FC_Active_Power_FC_end_Set_Response": {
+            "unit": "kW",
+            "description": "Respuesta al lazo de control de potencia",
+            "display_name": "FC_Active_Power_FC_end_Set_Response",
+            "type": "potencia"
+          }
+        }
+      },
+      "PVPCS_Photovoltaic": {
+        "name": "PVPCS (Generación Fotovoltaica)",
+        "description": "Potencia activa del inversor fotovoltaico",
+        "measurements": {
+          "PVPCS_Active_Power": {
+            "unit": "kW",
+            "description": "Potencia activa del sistema fotovoltaico",
+            "display_name": "PVPCS_Active_Power",
+            "type": "potencia"
+          }
+        }
+      },
+      "Receiving_Point": {
+        "name": "Receiving Point (Punto de Acoplamiento Común)",
+        "description": "Tensión en el punto de conexión con la red externa",
+        "measurements": {
+          "Receiving_Point_AC_Voltage": {
+            "unit": "V",
+            "description": "Tensión AC en el punto de recepción",
+            "display_name": "Receiving_Point_AC_Voltage",
+            "type": "voltaje"
+          }
+        }
+      },
+      "Thermal_System": {
+        "name": "Sistema Térmico (Chiller)",
+        "description": "Temperatura del agua fría a la entrada y salida del lazo térmico del chiller",
+        "measurements": {
+          "Inlet_Temperature_of_Chilled_Water": {
+            "unit": "°C",
+            "description": "Temperatura del agua fría a la entrada",
+            "display_name": "T_Inlet_Temperature_of_Chilled_Water",
+            "type": "temperatura"
+          },
+          "Outlet_Temperature": {
+            "unit": "°C",
+            "description": "Temperatura del agua fría a la salida",
+            "display_name": "T_Outlet_Temperature",
+            "type": "temperatura"
+          }
+        }
+      },
+      "Island_Mode": {
+        "name": "Modo Isla",
+        "description": "Potencia, tensión y frecuencia medidas en el interruptor general durante operación en isla",
+        "measurements": {
+          "Island_mode_MCCB_Active_Power": {
+            "unit": "kW",
+            "description": "Potencia activa en modo isla",
+            "display_name": "Island_mode_MCCB_Active_Power",
+            "type": "potencia"
+          },
+          "Island_mode_MCCB_AC_Voltage": {
+            "unit": "V",
+            "description": "Tensión AC en modo isla",
+            "display_name": "Island_mode_MCCB_AC_Voltage",
+            "type": "voltaje"
+          },
+          "Island_mode_MCCB_Frequency": {
+            "unit": "Hz",
+            "description": "Frecuencia en modo isla",
+            "display_name": "Island_mode_MCCB_Frequency",
+            "type": "frecuencia"
+          }
+        }
+      },
+      "Timestamp": {
+        "name": "Timestamp",
+        "description": "Marca temporal de las mediciones",
+        "measurements": {
+          "Timestamp": {
+            "unit": "datetime",
+            "description": "Fecha y hora de la medición",
+            "display_name": "Marca Temporal",
+            "type": "tiempo"
+          }
+        }
+      }
+    },
+    "component_display_map": {
+      "MG_Bus": "MG-LV-MSB (Bus Principal de Baja Tensión)",
+      "Battery": "Batería",
+      "GE_Gas_Engine": "GE (Motor de Gas)",
+      "FC_Fuel_Cell": "FC (Pila de Combustible)",
+      "PVPCS_Photovoltaic": "PVPCS (Generación Fotovoltaica)",
+      "Receiving_Point": "Receiving Point (Punto de Acoplamiento Común)",
+      "Thermal_System": "Sistema Térmico (Chiller)",
+      "Island_Mode": "Modo Isla",
+      "Timestamp": "Timestamp"
+    }
+  }
+}

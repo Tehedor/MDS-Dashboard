@@ -2,75 +2,108 @@
 import yaml
 from pathlib import Path
 
+# -----------------------------------------------------------
+# Cargar YAML
+# -----------------------------------------------------------
 def load_config(path: Path):
-    """Carga un YAML desde path (Path o str)."""
-    if isinstance(path, (str,)):
+    if path is None:
+        raise ValueError("El path no puede ser None")
+    if isinstance(path, str):
         path = Path(path)
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def build_checklist_options_from_components(components_dict, dataset_type, duckdb_columns):
+
+
+# -----------------------------------------------------------
+# GENERAR OPCIONES DEL CHECKLIST
+# cols_all = estructura JSON del get_all_columns()["all"]
+# -----------------------------------------------------------
+def build_checklist_options(cols_all):
     """
-    Devuelve una lista de opciones para dcc.Checklist basadas en:
-      - components_dict: dict con estructura 'components' (como en tus YAMLs)
-      - dataset_type: 'TabularDataSet' o 'EventEncodedDataSet'
-      - duckdb_columns: lista de columnas reales (para evitar mostrar cols inexistentes)
+    Devuelve cada opción con su metadata incluida.
+    Ejemplo:
+    {
+        "label": "Battery_Active_Power (Battery)",
+        "value": "Battery::tabular::Battery_Active_Power",
+        "meta": { ... item original ... }
+    }
     """
-    options = []
+    opciones = []
 
-    if not components_dict:
-        # fallback: todas las columnas excepto Timestamp
-        for c in duckdb_columns:
-            if c.lower() != "timestamp":
-                options.append({"label": c, "value": c})
-        return options
+    for item in cols_all:
+        name = item.get("name")
+        tipo = item.get("type")
+        comp = item.get("component")
 
-    for comp_id, comp in components_dict.items():
-        measurements = comp.get("measurements", {})
+        if not name or not tipo:
+            continue
 
-        # EventEncoded: measurements contains groups raw/from_to with columns lists (names)
-        if dataset_type == "EventEncodedDataSet":
-            for meas_id, meas_info in measurements.items():
-                if "raw" in meas_info:
-                    cols = meas_info["raw"].get("columns", [])
-                    for c in cols:
-                        if c in duckdb_columns:
-                            options.append({
-                                "label": f"{c} ({comp.get('name', comp_id)} · raw)",
-                                "value": f"{comp_id}::raw::{c}"
-                            })
-                if "from_to" in meas_info:
-                    cols = meas_info["from_to"].get("columns", [])
-                    for c in cols:
-                        if c in duckdb_columns:
-                            options.append({
-                                "label": f"{c} ({comp.get('name', comp_id)} · from_to)",
-                                "value": f"{comp_id}::from_to::{c}"
-                            })
+        # ----- TABULAR -----
+        if tipo == "tabular":
+            label = f"{name} ({comp})"
+            value = f"{comp}::{tipo}::{name}"
+
+        # ----- EVENTOS -----
+        elif tipo in ("raw", "from_to"):
+            label = f"{item['measurement']} [{tipo}] ({comp})"
+            value = f"{comp}::{tipo}::{item['name']}"
+
         else:
-            # Tabular: measurements map names to meta; we show the measurement keys if exist in DB
-            for meas_key, meas_meta in measurements.items():
-                col_candidates = [meas_meta.get("display_name"), meas_key]
-                for cand in col_candidates:
-                    if cand and cand in duckdb_columns:
-                        options.append({
-                            "label": f"{meas_meta.get('display_name', meas_key)} ({comp.get('name', comp_id)})",
-                            "value": cand
-                        })
-                        break
+            continue
 
-    # Fallback: si options queda vacío, generar options con todas las columnas reales (except Timestamp)
-    if not options:
-        for c in duckdb_columns:
-            if c.lower() != "timestamp":
-                options.append({"label": c, "value": c})
+        opciones.append({
+            "label": label,
+            "value": value,
+            "meta": item   # 🔥 clave: guardamos metadata completa
+        })
 
-    return options
+    return opciones
 
+
+def get_tabular_type(item, components_meta):
+    comp = item.get("component")
+    meas = item.get("name")
+
+    comp_data = components_meta.get(comp, {})
+    measurement_meta = comp_data.get("measurements", {}).get(meas)
+
+    if measurement_meta:
+        return measurement_meta.get("type")  # potencia, voltaje, frecuencia, temperatura...
+
+    return None
+
+
+
+# -----------------------------------------------------------
+# GENERAR OPCIONES DEL DROPDOWN "TIPO"
+# usando components_meta
+# -----------------------------------------------------------
+def build_tipo_options(components_meta):
+    tipos = set()
+
+    # Extraemos los tipos reales del dataset:
+    # potencia, voltaje, frecuencia, temperatura, …
+    for comp_data in components_meta.values():
+        for meta in comp_data.get("measurements", {}).values():
+            t = meta.get("type")
+            if t:
+                tipos.add(t)
+
+    # Añadir también los eventos
+    tipos.update(["raw", "from_to", "tabular"])
+
+    return [{"label": t.capitalize(), "value": t} for t in sorted(tipos)]
+
+
+
+# -----------------------------------------------------------
+# Helpers para labels
+# -----------------------------------------------------------
 def get_measurement_info_from_components(components_dict, value_code):
     """
-    Dado un value del checklist (por ejemplo 'Battery::raw::Q05' o 'MG-LV-MSB_AC_Voltage'),
-    devuelve info: {'component': ..., 'measurement': ..., 'mode': 'raw'|'from_to'|None}
+    Dado el value del checklist, devuelve:
+        {component, measurement, mode}
     """
     if not components_dict:
         return None
@@ -83,35 +116,25 @@ def get_measurement_info_from_components(components_dict, value_code):
             "measurement": col,
             "mode": mode
         }
-    else:
-        # tabular simple: buscar en components
+
+    else:  # tabular simple
         for comp_id, comp in components_dict.items():
             meas = comp.get("measurements", {})
             if value_code in meas or any(value_code == v.get("display_name") for v in meas.values()):
                 return {"component": comp.get("name", comp_id), "measurement": value_code, "mode": None}
+
         return None
 
+
+
 def format_label_with_unit(components_dict, measurement_name):
-    """
-    Devuelve la etiqueta formateada con unidad si existe en components_dict.
-    """
     info = get_measurement_info_from_components(components_dict, measurement_name)
     if info:
-        comp = components_dict.get(info["component"], {})
-        # buscar unidad si existe
-        comp_entry = None
-        # components_dict keys are comp_id; info['component'] contains display name; we attempt matching
         for comp_id, comp_data in components_dict.items():
-            if comp_data.get("name") == info["component"] or comp_id == info.get("component"):
-                comp_entry = comp_data
-                break
-        if comp_entry:
-            meas_meta = comp_entry.get("measurements", {}).get(info["measurement"])
-            if meas_meta:
-                unit = meas_meta.get("unit")
-                display = meas_meta.get("display_name", info["measurement"])
-                if unit:
-                    return f"{display} [{unit}]"
-                return display
-    # fallback
+            if comp_data.get("name") == info["component"]:
+                meas_meta = comp_data.get("measurements", {}).get(info["measurement"])
+                if meas_meta:
+                    unit = meas_meta.get("unit")
+                    display = meas_meta.get("display_name", info["measurement"])
+                    return f"{display} [{unit}]" if unit else display
     return measurement_name
