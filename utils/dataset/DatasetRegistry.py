@@ -16,7 +16,7 @@ class DatasetRegistry:
 
         with open(self.control_general, "r", encoding="utf-8") as f:
             self.control = yaml.safe_load(f)
-
+            
         self.subdatasets = self._load_subdatasets()
         self.datasets = self._load_datasets()
 
@@ -68,28 +68,3 @@ class DatasetRegistry:
         default = self.control.get("default_dataset")
         return self.datasets[default]
     
-
-    # def get_all_columns(self):
-    #     tabular_cols = []
-    #     event_cols = []
-
-    #     for sd in self.subdatasets.values():
-    #         tabular_cols += sd.get_tabular_columns()
-    #         event_cols += sd.get_event_columns()
-
-    #     event_raw = [e for e in event_cols if e["type"] == "raw"]
-    #     event_from_to = [e for e in event_cols if e["type"] == "from_to"]
-
-    #     by_component = {}
-    #     for e in event_cols:
-    #         comp = e["component"]
-    #         by_component.setdefault(comp, []).append(e)
-
-    #     return {
-    #         "tabular": tabular_cols,
-    #         "event_raw": event_raw,
-    #         "event_from_to": event_from_to,
-    #         "all": tabular_cols + event_cols,
-    #         "by_component": by_component
-    #     }
-

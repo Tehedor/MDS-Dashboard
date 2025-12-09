@@ -6,12 +6,12 @@ from pathlib import Path
 import pandas as pd
 
 
-from utils.clean_functions._0_merge_datasets import merge_all_datasets
-from utils.clean_functions._1_load_and_process_data import load_and_process_data
-from utils.clean_functions._2_clean_and_unify_duplicatses import clean_and_unify_duplicates
-from utils.clean_functions._3_negative_frec import negative_freq_report
-from utils.clean_functions._4_missing_data import rellenar_timestamps
-from utils.clean_functions._5_nomalizar_timestamps import normalize_timestamp_column
+# from utils.clean_functions._0_merge_datasets import merge_all_datasets
+# from utils.clean_functions._1_load_and_process_data import load_and_process_data
+# from utils.clean_functions._3_clean_and_unify_duplicates import clean_and_unify_duplicates
+# from utils.clean_functions._5_negative_frec import negative_freq_report
+# from utils.clean_functions._4_missing_data import rellenar_timestamps
+# from utils.clean_functions._5_nomalizar_timestamps import normalize_timestamp_column
 
 
 # ...existing code...

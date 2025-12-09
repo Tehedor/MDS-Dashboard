@@ -19,46 +19,51 @@ def load_config(path: Path):
 # GENERAR OPCIONES DEL CHECKLIST
 # cols_all = estructura JSON del get_all_columns()["all"]
 # -----------------------------------------------------------
-def build_checklist_options(cols_all):
-    """
-    Devuelve cada opción con su metadata incluida.
-    Ejemplo:
-    {
-        "label": "Battery_Active_Power (Battery)",
-        "value": "Battery::tabular::Battery_Active_Power",
-        "meta": { ... item original ... }
-    }
-    """
+def build_checklist_options(columnas_info):
     opciones = []
 
-    for item in cols_all:
-        name = item.get("name")
+    for item in columnas_info:
         tipo = item.get("type")
         comp = item.get("component")
 
-        if not name or not tipo:
-            continue
-
-        # ----- TABULAR -----
+        # ------------------------------
+        # TABULARES
+        # ------------------------------
         if tipo == "tabular":
-            label = f"{name} ({comp})"
-            value = f"{comp}::{tipo}::{name}"
+            nombre = item.get("name")
+            label = f"{nombre} [tabular] ({comp})" if comp else nombre
+            value = nombre
 
-        # ----- EVENTOS -----
-        elif tipo in ("raw", "from_to"):
-            label = f"{item['measurement']} [{tipo}] ({comp})"
-            value = f"{comp}::{tipo}::{item['name']}"
-
-        else:
+            opciones.append({
+                "label": label,
+                "value": value,
+                "meta": {
+                    "type": tipo,
+                    "component": comp,
+                    "name": nombre
+                }
+            })
             continue
+
+        # ------------------------------
+        # EVENTOS RAW / FROM_TO
+        # ------------------------------
+        measurement = item.get("measurement", item.get("name"))
+        nombre = item.get("name")
+        value = f"{comp}::{tipo}::{nombre}"
 
         opciones.append({
-            "label": label,
+            "label": f"{measurement} [{tipo}] ({comp})",
             "value": value,
-            "meta": item   # 🔥 clave: guardamos metadata completa
+            "meta": {
+                "type": tipo,
+                "component": comp,
+                "name": nombre
+            }
         })
 
     return opciones
+
 
 
 def get_tabular_type(item, components_meta):

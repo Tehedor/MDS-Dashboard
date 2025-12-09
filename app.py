@@ -1,26 +1,33 @@
+# =====================================================
+# app.py — versión con precarga real y comportamiento corregido
+# =====================================================
+
 import dash
 import logging
 import os
 from pathlib import Path
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from dash import html, dcc
 import pandas as pd
 
 from utils.dataset.DatasetRegistry import DatasetRegistry
 from utils.cache_config import init_cache, cache_config
-
 from layouts.dashboard_layout import serve_layout
 from callbacks.filtros import registrar_callbacks_filtros
 from callbacks.grafico_temporal import actualizar_grafico
 from debug.debug import save_debug_info
+from utils.helpers import format_label_with_unit, build_checklist_options
 
 
+# -----------------------------------------------------
+# LOGGING
+# -----------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 log = logging.getLogger("App")
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------
 # CARGA DATASETS
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------
 BASE_DATASETS_DIR = Path(__file__).parent / "Datasets"
 registry = DatasetRegistry(BASE_DATASETS_DIR)
 
@@ -28,100 +35,29 @@ datasets_disponibles = registry.list()
 if not datasets_disponibles:
     raise RuntimeError("❌ No hay datasets disponibles!")
 
-
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------
 # APP + CACHE
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------
 app = dash.Dash(__name__)
 cache = init_cache(app)
 cache_config(cache)
 server = app.server
 
-MAPA_DF = {}   # df en memoria
-
-# save_debug_info
-# head, de dataset current
-# def save_debug_info(content_source: Any, filename: Optional[str] = "info_debug", directory: Optional[Path] = None, head: Optional[str] = None) -> Path:
-# save_debug_info() 
-# df = datasets_disponibles[0].
-# ============================================================
-# DEBUG: extraer headers del primer dataset compuesto
-# ============================================================
-primer_dataset = datasets_disponibles[0]             # nombre string del dataset
-ds_obj = registry.get(primer_dataset)                # objeto DatasetComposite o DatasetBase
-
-# --- 1) Header del dataset compuesto completo ---
-save_debug_info(
-    content_source=list(ds_obj.df.columns),
-    filename="debug_composite_columns",
-    head=f"HEADER DEL DATASET COMPUESTO: {primer_dataset}"
-)
-
-# --- 2) Header del dataset MAIN ---
-if hasattr(ds_obj, "main"):
-    save_debug_info(
-        content_source=ds_obj.main.df.head(),
-        filename="debug_main_columns",
-        head=f"HEADER DEL SUBDATASET MAIN: {ds_obj.main.name}"
-    )
-
-# ...existing code...
-# --- DEBUG: guardar filas en timestamp concreto ---
-ts = "2023-07-31 23:07:11"
-try:
-    df_all = ds_obj.df.copy()
-    # determinar columna timestamp (fallback a "Timestamp")
-    ts_col = getattr(ds_obj, "timestamp_col", None) or (ds_obj.main.timestamp_col if hasattr(ds_obj, "main") else "Timestamp")
-    if ts_col not in df_all.columns:
-        # si no existe la columna, guardar aviso
-        save_debug_info(
-            content_source=f"No existe la columna '{ts_col}' en el dataframe compuesto.",
-            filename=f"debug_at_{ts.replace(' ', '_').replace(':','-')}",
-            head=f"BUSCAR TIMESTAMP {ts}"
-        )
-    else:
-        series_ts = pd.to_datetime(df_all[ts_col], errors="coerce")
-        target = pd.to_datetime(ts)
-        matched = df_all[series_ts == target]
-        if matched.empty:
-            save_debug_info(
-                content_source=f"No hay filas en {ts} (col '{ts_col}').",
-                filename=f"debug_at_{ts.replace(' ', '_').replace(':','-')}",
-                head=f"BUSCAR TIMESTAMP {ts}"
-            )
-        else:
-            save_debug_info(
-                content_source=matched,  # DataFrame -> save_debug_info usará to_string()
-                filename=f"debug_at_{ts.replace(' ', '_').replace(':','-')}",
-                head=f"FILAS EN {ts} (col '{ts_col}')"
-            )
-except Exception as e:
-    save_debug_info(
-        content_source=f"Error al buscar timestamp {ts}: {e}",
-        filename=f"debug_at_{ts.replace(' ', '_').replace(':','-')}_error",
-        head=f"ERROR BUSCAR TIMESTAMP {ts}"
-    )
-# ...existing code...
+# DF + METADATA EN MEMORIA
+MAPA_DF = {}
 
 
-# --- 3) Header del dataset secundario (si existe) ---
-if hasattr(ds_obj, "secondary") and ds_obj.secondary:
-    for key, sd in ds_obj.secondary.items():
-        save_debug_info(
-            content_source=sd.df.head(),
-            filename=f"debug_secondary_{key}_columns",
-            head=f"HEADER DEL SUBDATASET SECUNDARIO '{key}': {sd.name}"
-        )
-
-# ------------------------------------------------------------------------------
+# =====================================================
 # LAYOUT
-# ------------------------------------------------------------------------------
+# =====================================================
 def get_layout():
     return html.Div([
         dcc.Store(id="current-config"),
         dcc.Store(id="current-components"),
         dcc.Store(id="current-columns"),
         dcc.Store(id="cached-df"),
+        dcc.Store(id="slider-absolute-range"),
+        dcc.Store(id="initial-figure-store"),
 
         serve_layout(
             config={},
@@ -136,20 +72,20 @@ def get_layout():
 app.layout = get_layout
 
 
-# ------------------------------------------------------------------------------
-# CALLBACK: cargar dataset
-# ------------------------------------------------------------------------------
+# =====================================================
+# CALLBACK — CARGA DATASET
+# =====================================================
 @app.callback(
     [
         Output("current-config", "data"),
         Output("current-components", "data"),
         Output("current-columns", "data"),
         Output("cached-df", "data"),
+        Output("slider-absolute-range", "data"),
     ],
     Input("dataset-selector", "value")
 )
 def cargar_dataset(dataset_name):
-
     log.info(f"➡ Cargando dataset {dataset_name}...")
 
     ds = registry.get(dataset_name)
@@ -159,51 +95,114 @@ def cargar_dataset(dataset_name):
     components_meta = cols_info.get("components_meta", {})
     all_columns = cols_info.get("all", [])
 
+    # Guardamos metadata global para actualizar_grafico()
+    MAPA_DF["components_meta"] = components_meta
+
+    save_debug_info(
+        content_source=cols_info,
+        filename=f"colls_info_{dataset_name}",
+        head=f"HEADER DE cols_info para dataset '{dataset_name}': {ds.name}"
+    )
+
     df = ds.df.copy()
     MAPA_DF["actual"] = df
 
+    slider_range = {
+        "min": df["Timestamp"].iloc[0],
+        "max": df["Timestamp"].iloc[-1]
+    }
+
     log.info(f" Dataset OK: {len(df)} filas, {len(df.columns)} columnas")
 
-    return cfg, components_meta, all_columns, "ready"
+    return cfg, components_meta, all_columns, "ready", slider_range
 
 
-# ------------------------------------------------------------------------------
-# CALLBACK GRÁFICO — ahora SI recibe relayoutData (zoom)
-# ------------------------------------------------------------------------------
+# =====================================================
+# CALLBACK — FIGURA INICIAL
+# =====================================================
+@app.callback(
+    Output("initial-figure-store", "data"),
+    [
+        Input("current-columns", "data"),
+        Input("cached-df", "data")
+    ],
+    prevent_initial_call=True
+)
+def preparar_figura_inicial(cols_all, df_ready):
+
+    if df_ready != "ready" or not cols_all:
+        return {}
+
+    df = MAPA_DF.get("actual")
+    components_meta = MAPA_DF.get("components_meta", {})
+    if df is None:
+        return {}
+
+    # Opciones correctas del checklist
+    opciones = build_checklist_options(cols_all)
+    if not opciones:
+        return {}
+
+    col_visual = opciones[0]["value"]
+
+    fig = actualizar_grafico(
+        columnas_seleccionadas=[col_visual],
+        relayout_data=None,
+        df_plot=df,
+        x_timer="Timestamp",
+        format_label_with_unit=format_label_with_unit,
+        columnas_info=components_meta,
+        slider_data=None
+    )
+
+    return fig.to_plotly_json()
+
+
+# =====================================================
+# CALLBACK PRINCIPAL DE GRÁFICO
+# =====================================================
 @app.callback(
     Output("grafico-temporal", "figure"),
     [
         Input("checklist-columnas", "value"),
-        Input("cached-df", "data"),
+        Input("initial-figure-store", "data"),
         Input("current-columns", "data"),
-        Input("grafico-temporal", "relayoutData"),  # ⬅ AÑADIDO
+        Input("grafico-temporal", "relayoutData"),
+        Input("slider-absolute-range", "data"),
     ]
 )
-def grafico_callback(columnas_sel, trigger, columnas_info, relayout_data):
+def grafico_callback(columnas_sel, fig_inicial, columnas_info, relayout_data, slider_data):
 
     df = MAPA_DF.get("actual")
+    components_meta = MAPA_DF.get("components_meta", {})
+
     if df is None:
         return {}
+
+    # Si no hay selección, usamos la figura precargada
+    if (not columnas_sel or len(columnas_sel) == 0) and fig_inicial:
+        return fig_inicial
 
     return actualizar_grafico(
         columnas_seleccionadas=columnas_sel,
         relayout_data=relayout_data,
         df_plot=df,
         x_timer="Timestamp",
-        format_label_with_unit=lambda c: c,
-        columnas_info=columnas_info,
+        format_label_with_unit=format_label_with_unit,
+        columnas_info=components_meta,
+        slider_data=slider_data
     )
 
 
-# ------------------------------------------------------------------------------
+# =====================================================
 # FILTROS
-# ------------------------------------------------------------------------------
+# =====================================================
 registrar_callbacks_filtros(app)
 
 
-# ------------------------------------------------------------------------------
+# =====================================================
 # MAIN
-# ------------------------------------------------------------------------------
+# =====================================================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     log.info(f"🚀 Iniciando app en puerto {port}")

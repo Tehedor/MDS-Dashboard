@@ -1,49 +1,176 @@
+# callbacks/grafico_temporal.py
 import logging
+import gc
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly_resampler import FigureResampler
+from plotly_resampler.aggregation import EveryNthPoint
 from layouts.visuals.graph_style import get_graph_layout
-from debug.debug import save_debug_info
-
-# ----------------------------------------------------------
-# Interpretar value del checklist (tabular / raw / from_to)
-# ----------------------------------------------------------
-def parse_column_value(value):
-    if "::" in value:
-        comp, mode, name = value.split("::", 2)
-        return {"type": mode, "component": comp, "name": name}
-    return {"type": "tabular", "component": None, "name": value}
 
 
-# ----------------------------------------------------------
-# EVENTOS tipo RAW: presencia (0/1)
-# ----------------------------------------------------------
-def get_event_series(df, event_type, codes):
-    colname = "events_state" if event_type == "raw" else "events_from_to"
-    if colname not in df:
-        return None
-    col = df[colname]
-    mask = col.apply(lambda lista: any(c in lista for c in codes) if isinstance(lista, list) else False)
-    return mask.astype(int)
+# =====================================================================
+# 🔥 MAPA DE EVENTOS (tu diccionario completo)
+# =====================================================================
+EVENT_MAP = {
+    "Q05": 1,
+    "Q10": 2,
+    "Q20": 3,
+    "Q50": 4,
+    "Q90": 5,
+    "Q95": 6,
+    "Q05_to_Q10": 7,
+    "Q05_to_Q20": 8,
+    "Q05_to_Q50": 9,
+    "Q05_to_Q90": 10,
+    "Q05_to_Q95": 11,
+    "Q10_to_Q05": 12,
+    "Q10_to_Q20": 13,
+    "Q10_to_Q50": 14,
+    "Q10_to_Q90": 15,
+    "Q10_to_Q95": 16,
+    "Q20_to_Q05": 17,
+    "Q20_to_Q10": 18,
+    "Q20_to_Q50": 19,
+    "Q20_to_Q90": 20,
+    "Q20_to_Q95": 21,
+    "Q50_to_Q05": 22,
+    "Q50_to_Q10": 23,
+    "Q50_to_Q20": 24,
+    "Q50_to_Q90": 25,
+    "Q50_to_Q95": 26,
+    "Q90_to_Q05": 27,
+    "Q90_to_Q10": 28,
+    "Q90_to_Q20": 29,
+    "Q90_to_Q50": 30,
+    "Q90_to_Q95": 31,
+    "Q95_to_Q05": 32,
+    "Q95_to_Q10": 33,
+    "Q95_to_Q20": 34,
+    "Q95_to_Q50": 35,
+    "Q95_to_Q90": 36,
+    "Q05": 37,
+    "Q10": 38,
+    "Q20": 39,
+    "Q50": 40,
+    "Q90": 41,
+    "Q95": 42,
+    "Q05_to_Q10": 43,
+    "Q05_to_Q20": 44,
+    "Q05_to_Q50": 45,
+    "Q05_to_Q90": 46,
+    "Q05_to_Q95": 47,
+    "Q10_to_Q05": 48,
+    "Q10_to_Q20": 49,
+    "Q10_to_Q50": 50,
+    "Q10_to_Q95": 51,
+    "Q20_to_Q05": 52,
+    "Q20_to_Q10": 53,
+    "Q20_to_Q50": 54,
+    "Q20_to_Q90": 55,
+    "Q20_to_Q95": 56,
+    "Q50_to_Q05": 57,
+    "Q50_to_Q10": 58,
+    "Q50_to_Q20": 59,
+    "Q50_to_Q90": 60,
+    "Q50_to_Q95": 61,
+    "Q90_to_Q05": 62,
+    "Q90_to_Q20": 63,
+    "Q90_to_Q50": 64,
+    "Q90_to_Q95": 65,
+    "Q95_to_Q05": 66,
+    "Q95_to_Q10": 67,
+    "Q95_to_Q20": 68,
+    "Q95_to_Q50": 69,
+    "Q95_to_Q90": 70,
+    "Q05": 71,
+    "Q10": 72,
+    "Q20": 73,
+    "Q50": 74,
+    "Q90": 75,
+    "Q95": 76,
+    "Q05_to_Q10": 77,
+    "Q05_to_Q20": 78,
+    "Q05_to_Q50": 79,
+    "Q05_to_Q95": 80,
+    "Q10_to_Q05": 81,
+    "Q10_to_Q20": 82,
+    "Q10_to_Q50": 83,
+    "Q20_to_Q05": 84,
+    "Q20_to_Q10": 85,
+    "Q20_to_Q50": 86,
+    "Q20_to_Q90": 87,
+    "Q20_to_Q95": 88,
+    "Q50_to_Q05": 89,
+    "Q50_to_Q10": 90,
+    "Q50_to_Q20": 91,
+    "Q50_to_Q90": 92,
+    "Q50_to_Q95": 93,
+    "Q90_to_Q10": 94,
+    "Q90_to_Q20": 95,
+    "Q90_to_Q50": 96,
+    "Q90_to_Q95": 97,
+    "Q95_to_Q20": 98,
+    "Q95_to_Q50": 99,
+    "Q95_to_Q90": 100,
+    "Q05": 101,
+    "Q20": 102,
+    "Q50": 103,
+    "Q95": 104,
+    "Q05_to_Q20": 105,
+    "Q05_to_Q50": 106,
+    "Q05_to_Q95": 107,
+    "Q20_to_Q05": 108,
+    "Q20_to_Q50": 109,
+    "Q20_to_Q95": 110,
+    "Q50_to_Q05": 111,
+    "Q50_to_Q20": 112,
+    "Q50_to_Q95": 113,
+    "Q95_to_Q05": 114,
+    "Q95_to_Q20": 115,
+    "Q95_to_Q50": 116,
+    "Q05": 117,
+    "Q50": 118,
+    "Q90": 119,
+    "Q95": 120,
+    "Q05_to_Q50": 121,
+    "Q50_to_Q05": 122,
+    "Q50_to_Q90": 123,
+    "Q50_to_Q95": 124,
+    "Q90_to_Q05": 125,
+    "Q90_to_Q50": 126,
+    "Q90_to_Q95": 127,
+    "Q95_to_Q05": 128,
+    "Q95_to_Q50": 129,
+    "Q95_to_Q90": 130,
+    "Q05": 131,
+    "Q10": 132,
+    "Q20": 133,
+    "Q50": 134,
+    "Q95": 135,
+    "Q05_to_Q10": 136,
+    "Q05_to_Q20": 137,
+    "Q05_to_Q50": 138,
+    "Q10_to_Q05": 139,
+    "Q10_to_Q20": 140,
+    "Q10_to_Q50": 141,
+    "Q10_to_Q95": 142,
+    "Q20_to_Q05": 143,
+    "Q20_to_Q10": 144,
+    "Q20_to_Q50": 145,
+    "Q20_to_Q95": 146,
+    "Q50_to_Q05": 147,
+    "Q50_to_Q10": 148,
+    "Q50_to_Q20": 149,
+    "Q50_to_Q95": 150,
+    "Q95_to_Q05": 151,
+    "Q95_to_Q10": 152,
+    "Q95_to_Q20": 153,
+    "Q95_to_Q50": 154
+}
 
 
-# ----------------------------------------------------------
-# Buscar códigos desde metadata
-# ----------------------------------------------------------
-def _buscar_event_codes(item_name, comp, mode, columnas_info):
-    for item in columnas_info:
-        if item.get("type") != mode:
-            continue
-        if item.get("component") != comp:
-            continue
-        if item.get("name") == item_name or item.get("measurement") == item_name:
-            return item.get("codes")
-    return None
 
-
-# ==========================================================
-#                 FUNCIÓN PRINCIPAL DEL GRÁFICO
-# ==========================================================
 def actualizar_grafico(
     columnas_seleccionadas,
     relayout_data,
@@ -51,221 +178,239 @@ def actualizar_grafico(
     x_timer,
     format_label_with_unit,
     columnas_info,
-    default_n_shown_samples=600,
+    slider_data,
+    default_n_shown_samples=550,
 ):
 
-    logging.info(f"↪ Ejecutando gráfico. Columnas: {columnas_seleccionadas}")
+    gc.collect()
 
+    # ---------------------------------------------------------------------
+    # 0. Sin columnas seleccionadas
+    # ---------------------------------------------------------------------
     if not columnas_seleccionadas:
-        return go.Figure().update_layout(title="Selecciona una serie")
+        return go.Figure().update_layout(title="Selecciona al menos una serie.")
 
-    # Convertimos X a datetime si hace falta
-    if not pd.api.types.is_datetime64_any_dtype(df_plot[x_timer]):
-        df_plot = df_plot.copy()
-        df_plot[x_timer] = pd.to_datetime(df_plot[x_timer])
+    # ---------------------------------------------------------------------
+    # 1. Rango absoluto del slider
+    # ---------------------------------------------------------------------
+    if slider_data:
+        slider_min = pd.to_datetime(slider_data["min"])
+        slider_max = pd.to_datetime(slider_data["max"])
+    else:
+        tmp = pd.to_datetime(df_plot[x_timer])
+        slider_min, slider_max = tmp.iloc[0], tmp.iloc[-1]
 
-    # ----------------------------------------------------------
-    # 1) Leer el zoom si existe
-    # ----------------------------------------------------------
+    full_x = df_plot[x_timer].values
+
+    # ---------------------------------------------------------------------
+    # 2. Procesar zoom/slider
+    # ---------------------------------------------------------------------
     x_min, x_max = None, None
 
     if relayout_data:
-        if "xaxis.range[0]" in relayout_data and "xaxis.range[1]" in relayout_data:
-            x_min = pd.to_datetime(relayout_data["xaxis.range[0]"])
-            x_max = pd.to_datetime(relayout_data["xaxis.range[1]"])
+
+        # Zoom manual
+        if "xaxis.range[0]" in relayout_data:
+            x_min = relayout_data["xaxis.range[0]"]
+            x_max = relayout_data["xaxis.range[1]"]
+
+        # Movimiento del slider
         elif "xaxis.range" in relayout_data:
-            x_min = pd.to_datetime(relayout_data["xaxis.range"][0])
-            x_max = pd.to_datetime(relayout_data["xaxis.range"][1])
-        elif "xaxis.autorange" in relayout_data:
-            x_min, x_max = None, None
+            try:
+                x_min, x_max = relayout_data["xaxis.range"]
+            except:
+                pass
 
-    # ----------------------------------------------------------
-    # 2) Filtrar por zoom
-    # ----------------------------------------------------------
-    df_visible = df_plot if x_min is None else df_plot[
-        (df_plot[x_timer] >= x_min) & (df_plot[x_timer] <= x_max)
-    ]
+        if relayout_data.get("xaxis.autorange") is True:
+            x_min = x_max = None
 
-    # ----------------------------------------------------------
-    # 3) Crear figura
-    # ----------------------------------------------------------
-    fig = FigureResampler(go.Figure(), default_n_shown_samples=default_n_shown_samples)
+    # ---------------------------------------------------------------------
+    # 3. Slicing
+    # ---------------------------------------------------------------------
+    if x_min is None or x_max is None:
+        idx_start = 0
+        idx_end = len(full_x)
+        view_min, view_max = slider_min, slider_max
+    else:
+        tmin = pd.to_datetime(x_min).to_datetime64()
+        tmax = pd.to_datetime(x_max).to_datetime64()
 
-    y_min_global, y_max_global = None, None
+        idx_start = np.searchsorted(full_x, tmin)
+        idx_end = np.searchsorted(full_x, tmax)
 
-    # ==========================================================
-    # 4) Procesar cada columna seleccionada
-    # ==========================================================
-    for val in columnas_seleccionadas:
+        idx_start = max(0, idx_start)
+        idx_end = min(len(full_x), idx_end)
 
-        info = parse_column_value(val)
-        col_type = info["type"]
-        col_name = info["name"]
-        comp = info["component"]
+        view_min, view_max = x_min, x_max
 
-        etiqueta = col_name if col_type != "tabular" else format_label_with_unit(col_name)
+    if idx_end <= idx_start:
+        idx_start, idx_end = 0, len(full_x)
+        view_min, view_max = slider_min, slider_max
 
-        # ======================================================
-        #                TABULAR (curvas normales)
-        # ======================================================
-        if col_type == "tabular":
+    x_view = full_x[idx_start:idx_end]
 
-            if col_name not in df_visible:
-                continue
+    # ---------------------------------------------------------------------
+    # 4. Figura resampler
+    # ---------------------------------------------------------------------
+    fig = FigureResampler(
+        go.Figure(),
+        default_downsampler=EveryNthPoint(),
+        default_n_shown_samples=default_n_shown_samples,
+    )
 
-            serie = df_visible[[x_timer, col_name]]
-            serie_validos = serie[serie[col_name].between(-999998, 999998)]
+    y_min_global = None
+    y_max_global = None
 
-            if not serie_validos.empty:
-                ymin = serie_validos[col_name].min()
-                ymax = serie_validos[col_name].max()
-                y_min_global = ymin if y_min_global is None else min(y_min_global, ymin)
-                y_max_global = ymax if y_max_global is None else max(y_max_global, ymax)
+    # ---------------------------------------------------------------------
+    # 5. Detección: anomalías, nulos, from_to
+    # ---------------------------------------------------------------------
+    anomalous_ts = []
+    null_ts = []
+    fromto_points = []  # (x, y, eventID)
 
-            fig.add_trace(
-                go.Scatter(name=etiqueta, mode="lines", line=dict(width=2)),
-                hf_x=serie_validos[x_timer],
-                hf_y=serie_validos[col_name]
-            )
+    for col in columnas_seleccionadas:
+
+        col_name = col.split("::")[-1]
+
+        if col_name not in df_plot.columns:
             continue
 
-        # ======================================================
-        #                  EVENTOS RAW (0/1)
-        # ======================================================
-        if col_type == "raw":
+        y_full = df_plot[col_name].values
+        y = y_full[idx_start:idx_end]
 
-            codes = _buscar_event_codes(col_name, comp, "raw", columnas_info)
-            if not codes:
-                continue
-
-            serie_event = get_event_series(df_visible, "raw", codes)
-            if serie_event is None:
-                continue
-
-            # evento raw siempre es 0/1
-            fig.add_trace(
-                go.Scatter(name=f"{etiqueta} (raw)", mode="lines", line=dict(width=1.5, dash="dot")),
-                hf_x=df_visible[x_timer],
-                hf_y=serie_event
-            )
+        if len(y) == 0:
             continue
 
-        # ======================================================
-        #                EVENTOS FROM_TO (PUNTOS)
-        # ======================================================
+        # ---------------------------------------------------------------
+        # A) FROM_TO — puntos colocados a la altura de la columna base
+        # ---------------------------------------------------------------
+        if col_name.endswith("-from_to"):
 
-        if col_type == "from_to":
-            logging.info(f"@@2@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-            logging.info(f"Procesando columna eventos from_to: {col_name} (componente: {comp})")
-            logging.info(f"@@2@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-            # Recuperar measurement correcto
-            full_name = info["name"]   # ej: "Battery_Active_Power_from_to"
-            tabular_name = full_name.replace("_from_to", "")
+            col_base = col_name.replace("-from_to", "")
 
-            codes = _buscar_event_codes(full_name, comp, "from_to", columnas_info)
-            if not codes:
-                continue
+            if col_base in df_plot.columns:
 
-            if tabular_name not in df_visible:
-                continue
+                y_base_values = df_plot[col_base].values[idx_start:idx_end]
+                event_id = EVENT_MAP.get(col_name, None)
 
-            col_event_name = f"{tabular_name}_from_to"
+                for i, v in enumerate(y):
 
+                    if np.isnan(v) or v in (-999999, 999999):
+                        continue
 
-            if col_event_name not in df_visible:
-                # DEBUG → No existe la columna from_to
-                save_debug_info(
-                    {
-                        "error": "columna_from_to_no_existe",
-                        "col_event_name": col_event_name,
-                        "df_cols": list(df_visible.columns),
-                    },
-                    filename="debug_fromto_missing_column",
-                    # directory=Path("./debug")
-                )
-                continue
+                    fromto_points.append(
+                        (x_view[i], y_base_values[i], event_id)
+                    )
 
-            serie_event = df_visible[col_event_name]
-            serie_tab = df_visible[tabular_name]
+            continue  # No se dibuja línea
 
-            mask = serie_event.notna()
+        # ---------------------------------------------------------------
+        # B) ANÓMALOS / NULOS
+        # ---------------------------------------------------------------
+        is_anomaly = (y == -999999.0)
+        is_null = (y == 999999.0)
+        is_invalid = is_anomaly | is_null
 
-            # --------------------------------------------------
-            # 🔥 DEBUG → GUARDAR INFORMACIÓN DETALLADA
-            # --------------------------------------------------
-            debug_payload = {
-                "col_type": col_type,
-                "col_name": col_name,
-                "component": comp,
-                "tabular_name": tabular_name,
-                "col_event_name": col_event_name,
-                "codes_expected": codes,
-                "num_rows_df_visible": len(df_visible),
-                "num_rows_event_notna": int(mask.sum()),
-                "mask_first_20": mask.head(20).tolist(),
-                "event_values_first_20": serie_event.head(20).astype(str).tolist(),
-                "tab_values_first_20": serie_tab.head(20).astype(str).tolist(),
-            }
+        if np.any(is_anomaly):
+            anomalous_ts.extend(x_view[is_anomaly])
 
-            save_debug_info(
-                debug_payload,
-                filename=f"debug_fromto_{col_name}",
-                # directory=Path("./debug")
-            )
-            # --------------------------------------------------
+        if np.any(is_null):
+            null_ts.extend(x_view[is_null])
 
-            # Si no hay eventos → continuar
-            if not mask.any():
-                continue
+        # ---------------------------------------------------------------
+        # C) Valores válidos → línea normal
+        # ---------------------------------------------------------------
+        is_valid = ~(is_invalid) & (y > -999998.0) & (y < 999998.0)
 
-            eventos_x = df_visible.loc[mask, x_timer]
-            eventos_y = df_visible.loc[mask, tabular_name]
-            eventos_codigo = serie_event.loc[mask]
+        if np.any(is_valid):
+
+            yy = y[is_valid]
+            ymin, ymax = np.min(yy), np.max(yy)
+
+            y_min_global = ymin if y_min_global is None else min(y_min_global, ymin)
+            y_max_global = ymax if y_max_global is None else max(y_max_global, ymax)
 
             fig.add_trace(
-                go.Scatter(
-                    x=eventos_x,
-                    y=eventos_y,
-                    mode="markers",
-                    name=f"{etiqueta} (eventos)",
-                    marker=dict(size=12, color="red", symbol="diamond"),
-                    text=[
-                        f"<b>Evento:</b> {etiqueta}<br>"
-                        f"<b>Código:</b> {float(c)}<br>"
-                        f"<b>Valor Y:</b> {float(v):.3f}"
-                        for c, v in zip(eventos_codigo, eventos_y)
-                    ],
-                    hovertemplate="%{text}<extra></extra>"
-                )
+                go.Scattergl(   
+                    # name=format_label_with_unit(col),
+                    name=format_label_with_unit(columnas_info, col),
+                    line=dict(width=3)
+                ),
+                hf_x=x_view[is_valid],
+                hf_y=yy,
             )
 
+    # ---------------------------------------------------------------------
+    # 5D. Dibujar anomalías/nulos
+    # ---------------------------------------------------------------------
+    base_y = 0 if y_min_global is None else y_min_global - abs(y_min_global) * 0.05
 
-            # Expandir rango Y
-            y_min_global = (
-                eventos_y.min()
-                if y_min_global is None else min(y_min_global, eventos_y.min())
-            )
-            y_max_global = (
-                eventos_y.max()
-                if y_max_global is None else max(y_max_global, eventos_y.max())
-            )
-
-            continue
-
-
-    # ----------------------------------------------------------
-    # 5) Layout final
-    # ----------------------------------------------------------
-    slider_min = df_plot[x_timer].min()
-    slider_max = df_plot[x_timer].max()
-
-    fig.update_layout(
-        get_graph_layout(
-            x_min,
-            x_max,
-            slider_min,
-            slider_max
+    # Anómalos
+    if anomalous_ts:
+        ts = np.unique(anomalous_ts)
+        fig.add_trace(
+            go.Scattergl(
+                mode="markers",
+                marker=dict(color="orange", size=8),
+                name="Anómalo (-999999)"
+            ),
+            hf_x=ts,
+            hf_y=np.full(len(ts), base_y),
         )
+
+    # Nulos
+    if null_ts:
+        ts = np.unique(null_ts)
+        fig.add_trace(
+            go.Scattergl(
+                mode="markers",
+                marker=dict(color="red", size=8),
+                name="Nulo (999999)"
+            ),
+            hf_x=ts,
+            hf_y=np.full(len(ts), base_y),
+        )
+
+    # ---------------------------------------------------------------------
+    # 5E. Dibujar from_to (rápido, solo eventID)
+    # ---------------------------------------------------------------------
+    # ---------------------------------------------------------------------
+    # 5E. Dibujar from_to (rápido, solo eventID)
+    # ---------------------------------------------------------------------
+    if fromto_points:
+
+        xs = [p[0] for p in fromto_points]
+        ys = [p[1] for p in fromto_points]
+
+        # p[2] = eventID, si no existe, poner '-'
+        texts = [f"{p[2]}" if p[2] is not None else "-" for p in fromto_points]
+
+        fig.add_trace(
+            go.Scattergl(
+                mode="markers",
+                marker=dict(color="blue", size=9),
+                name="from_to",
+                hovertemplate="Evento %{text}<extra></extra>",
+                text=texts,
+            ),
+            hf_x=xs,   # ✔ obligatorio para Resampler
+            hf_y=ys,   # ✔ obligatorio para Resampler
+        )
+
+    # ---------------------------------------------------------------------
+    # 6. Layout
+    # ---------------------------------------------------------------------
+    fig.update_layout(
+        get_graph_layout(view_min, view_max, slider_min, slider_max)
+    )
+
+    # ---------------------------------------------------------------------
+    # 7. Slider fijo
+    # ---------------------------------------------------------------------
+    fig.update_xaxes(
+        range=[view_min, view_max],
+        autorange=False,
+        rangeslider=dict(visible=True, range=[slider_min, slider_max])
     )
 
     return fig

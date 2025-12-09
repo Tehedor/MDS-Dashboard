@@ -1,69 +1,64 @@
 # utils/clean_functions/_4_missing_data.py
+import logging
 import pandas as pd
 import numpy as np
 
-def rellenar_timestamps(df, valor_relleno=999999.0, margen=0.5):
+def rellenar_timestamps(subdataset, valor_relleno=999999.0, margen=0.5):
     """
-    Detecta huecos en el índice temporal de un DataFrame y los rellena 
-    con nuevas filas donde el índice falta, usando un valor constante.
-
-    Parámetros:
-    -----------
-    df : pd.DataFrame
-        DataFrame con índice de tipo DatetimeIndex ordenado.
-    valor_relleno : float
-        Valor que se colocará en las filas creadas (por defecto 9999999.0)
-    margen : float
-        Tolerancia en segundos para considerar un hueco (por defecto 0.5)
-
-    Retorna:
-    --------
-    df_completo : pd.DataFrame
-        DataFrame con timestamps faltantes insertados.
-    anomalies : pd.DataFrame
-        Reporte con huecos detectados (prev_ts, curr_ts, gap_seconds, missing_samples)
+    Rellena huecos temporales generando filas nuevas con un valor fijo.
+    Retorna solo el df, pero genera reporte de huecos por logging.
     """
+    df = subdataset.df
 
-    # --- 1) Calcular resolución temporal ---
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise RuntimeError("[rellenar_timestamps] El índice debe ser un DatetimeIndex")
+
+    # --- resolución temporal ---
     resolution = df.index.to_series().diff().mode()[0]
-    resolution_seconds = resolution.total_seconds()
+    resolution_s = resolution.total_seconds()
 
-    # --- 2) Calcular deltas y detectar huecos ---
     deltas = df.index.to_series().diff().dt.total_seconds().dropna()
-    off_mask = (deltas - resolution_seconds).abs() > margen
+    off_mask = (deltas - resolution_s).abs() > margen
     gaps_s = deltas[off_mask]
 
     curr_ts = gaps_s.index
     prev_ts = curr_ts - pd.to_timedelta(gaps_s, unit="s")
-    missing = np.maximum(0, np.floor((gaps_s + margen) / resolution_seconds).astype(int) - 1)
+    missing_samples = np.maximum(
+        0, np.floor((gaps_s + margen) / resolution_s).astype(int) - 1
+    )
 
     anomalies = pd.DataFrame({
         "prev_ts": prev_ts,
         "curr_ts": curr_ts,
         "gap_seconds": gaps_s.values,
-        "missing_samples": missing.values
-    }).reset_index(drop=True)
+        "missing_samples": missing_samples.values
+    })
 
-    total_missing = int(missing.sum())
+    total_missing = int(missing_samples.sum())
 
     if total_missing == 0:
-        print("✅ No se detectaron huecos en los timestamps.")
-        return df.copy(), anomalies
+        logging.info("[rellenar_timestamps] No se detectaron huecos en timestamps.")
+        return df
 
-    # --- 3) Crear los nuevos timestamps ---
-    new_timestamps = []
-    for i, row in anomalies.iterrows():
+    logging.warning(
+        f"[rellenar_timestamps] {len(anomalies)} huecos detectados. "
+        f"Se insertarán {total_missing} nuevas filas."
+    )
+
+    # --- crear timestamps que faltan ---
+    new_ts = []
+    for idx, row in anomalies.iterrows():
         for j in range(1, row["missing_samples"] + 1):
-            ts_missing = row["prev_ts"] + j * resolution
-            new_timestamps.append(ts_missing)
+            new_ts.append(row["prev_ts"] + j * resolution)
 
-    # --- 4) Crear DataFrame con los valores de relleno ---
-    df_missing = pd.DataFrame(valor_relleno, index=new_timestamps, columns=df.columns)
+    df_missing = pd.DataFrame(
+        valor_relleno, index=new_ts, columns=df.columns
+    )
 
-    # --- 5) Unir y reordenar ---
-    df_completo = pd.concat([df, df_missing]).sort_index()
+    df_full = pd.concat([df, df_missing]).sort_index()
 
-    print(f"⚠️ Se detectaron {len(anomalies)} huecos.")
-    print(f"🧩 Se insertaron {total_missing} filas nuevas con el valor {valor_relleno}.")
+    logging.info(
+        f"[rellenar_timestamps] Insertadas {total_missing} filas nuevas con valor={valor_relleno}"
+    )
 
-    return df_completo, anomalies
+    return df_full

@@ -1,7 +1,8 @@
+# callbacks/filtros.py
 from dash import ctx
 from dash.dependencies import Input, Output, State
 from utils.helpers import build_checklist_options, build_tipo_options, get_tabular_type
-
+from debug.debug import save_debug_info
 
 def registrar_callbacks_filtros(app):
 
@@ -41,7 +42,7 @@ def registrar_callbacks_filtros(app):
         comp_sel, tipo_sel, n_clicks, dataset,
         seleccionados, boton_clase
     ):
-
+        
         trigger = ctx.triggered_id
 
         # 🚀🔥 CARGA REAL → primera vez que llegan datos desde el dataset
@@ -116,17 +117,22 @@ def registrar_callbacks_filtros(app):
         # ------------------------------------------------------------------
         # Filtro por componente
         # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Filtro por componente
+        # ------------------------------------------------------------------
         if trigger == "dropdown-componentes" and comp_sel != "ALL":
             filtradas = [
                 o for o in opciones_base
-                if o["value"].startswith(f"{comp_sel}::")
+                if o.get("meta", {}).get("component") == comp_sel
             ]
+
             return (
                 filtradas, seleccionados or [],
                 componentes_opts, comp_sel, "active-filter",
                 tipos, "ALL", "",
                 boton_clase
             )
+
 
         # ------------------------------------------------------------------
         # Filtro por tipo real

@@ -67,61 +67,10 @@ def _build_tabular(sd):
         df_clean = df_clean.reset_index().rename(columns={"index": timestamp_col})
 
     # Escribir parquet final
-    df_clean.to_parquet(sd.parquet_file, index=False)
+    df_clean.to_parquet(sd.parquet_file, index=True)
 
     print(f"✔ Parquet generado con pipeline: {sd.parquet_file}   filas={len(df_clean)}")
 
-
-# -----------------------------------------
-# def _build_event_encoded(sd):
-#     raw_files = list(sd.raw_dir.glob("*.csv"))
-#     if not raw_files:
-#         raise RuntimeError(f"No CSV en {sd.raw_dir}")
-
-#     # cargar pipeline
-#     config = load_config(sd.control_file)
-#     pipeline_cfg = config.get("pipelineCleanData", {})
-#     timestamp_col = sd.timestamp_col
-
-#     # ejecutar pipeline completa
-#     df = cargar_dataset_completo(
-#         pattern_csv=[str(f) for f in raw_files],
-#         pipelineCleanData=pipeline_cfg,
-#         timestamp_col=timestamp_col
-#     )
-
-#     # ------------------------------------------------------
-#     # ✔ Timestamp SIEMPRE VIENE COMO ÍNDICE tras la pipeline
-#     # ------------------------------------------------------
-#     if not isinstance(df.index, pd.DatetimeIndex):
-#         raise RuntimeError(
-#             f"❌ Se esperaba DatetimeIndex tras la pipeline en {sd.name}, pero obtuvimos: {type(df.index)}"
-#         )
-
-#     # convertimos índice → columna para guardar correctamente
-#     df = df.reset_index().rename(columns={"index": timestamp_col})
-
-#     # ------------------------------------------------------
-#     # ✔ La pipeline devuelve una columna llamada "event"
-#     #    la convertimos a "event_code"
-#     # ------------------------------------------------------
-#     if "event" not in df.columns:
-#         raise RuntimeError(
-#             f"❌ La pipeline no devolvió columna 'event' en {sd.name}. Columnas={list(df.columns)}"
-#         )
-
-#     df = df.rename(columns={"event": "event_code"})
-
-#     # mantener solo las columnas necesarias
-#     df = df[[timestamp_col, "event_code"]]
-
-#     # ------------------------------------------------------
-#     # ✔ Guardar parquet final
-#     # ------------------------------------------------------
-#     df.to_parquet(sd.parquet_file, index=False)
-#     print(f"✔ Parquet de eventos generado: {sd.parquet_file} | filas={len(df)}")
-# utils/dataset/loader.py
-# (mantén el resto del fichero tal cual; sustituye sólo la función _build_event_encoded)
 def _build_event_encoded(sd):
     """
     Construye el parquet de un subdataset 'event-encoded' según el nuevo YAML agrupado.

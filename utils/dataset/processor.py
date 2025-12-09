@@ -5,9 +5,6 @@ import json
 from typing import Optional
 from utils.dataset.loader import read_csvs_concat, save_parquet, load_parquet
 
-# NOTE: aquí puedes integrar tus clean_functions si quieres ejecutar la pipeline completa.
-# Para mantenerlo robusto y simple, implementamos una limpieza mínima por defecto.
-
 def build_mds_parquet(raw_dir: Path, out_parquet: Path, timestamp_col: str = "Timestamp"):
     csvs = sorted(raw_dir.glob("*.csv"))
     if not csvs:

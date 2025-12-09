@@ -1,9 +1,11 @@
 # utils/dataset/DatasetComposite.py
 import logging
+from duckdb import df
 import pandas as pd
 
 
 class DatasetComposite:
+
 
     def __init__(self, name, registry, subdatasets):
         self.name = name
@@ -18,14 +20,29 @@ class DatasetComposite:
         self.composed_parquet = self.composed_dir / f"{name}.parquet"
 
         # ========================================================
-        #   SI EL PARQUET YA EXISTE → cargar y salir
+        #   SI EL PARQUET YA EXISTE → cargar y reconstruir referencias
         # ========================================================
         if self.composed_parquet.exists():
             logging.info(f"🧩 Cargando parquet compuesto existente: {self.composed_parquet}")
 
+            # cargar parquet (esperamos que contenga la columna 'Timestamp')
             self.df = pd.read_parquet(self.composed_parquet)
 
-            # reconstruir referencias
+            # asegurarnos de que Timestamp existe y el índice es DatetimeIndex
+            if "Timestamp" in self.df.columns:
+                self.df["Timestamp"] = pd.to_datetime(self.df["Timestamp"], errors="coerce")
+                # establecer índice a partir de la columna Timestamp (sin eliminarla)
+                self.df.index = self.df["Timestamp"]
+            else:
+                # si no hay columna Timestamp, intentar usar el índice ya presente
+                if not isinstance(self.df.index, pd.DatetimeIndex):
+                    # forzar conversión del índice a datetime
+                    try:
+                        self.df.index = pd.to_datetime(self.df.index, errors="coerce")
+                    except Exception:
+                        pass
+
+            # reconstruir referencias a subdatasets
             main_name = subdatasets["main"]
             self.main = registry.subdatasets[main_name]
 
@@ -47,7 +64,7 @@ class DatasetComposite:
             return
 
         # ========================================================
-        #   SI NO EXISTE → construir composite desde cero
+        #   CONSTRUCCIÓN DESDE CERO
         # ========================================================
         logging.info(f"🧩 Construyendo composite desde cero: {name}")
 
@@ -55,14 +72,14 @@ class DatasetComposite:
         main_name = subdatasets["main"]
         self.main = registry.subdatasets[main_name]
 
-        # otros subdatasets (con soporte para null)
+        # otros subdatasets
         self.secondary = {}
         for key, sd_name in subdatasets.items():
             if key == "main":
                 continue
 
             if sd_name is None:
-                logging.info(f"ℹ️ Subdataset '{key}' = None → no se mergea en composite '{self.name}'")
+                logging.info(f"ℹ️ Subdataset '{key}' = None → no se mergea")
                 continue
 
             if sd_name not in registry.subdatasets:
@@ -71,25 +88,34 @@ class DatasetComposite:
 
             self.secondary[key] = registry.subdatasets[sd_name]
 
-        # construir dataframe final
+        # merge final (devuelve df con índice datetime)
         self.df = self._build_combined_df()
 
-        # guardar parquet final
+        # --- aquí sacamos el índice a columna Timestamp (columna real) ---
+        # asegurar que el índice es DatetimeIndex
+        if not isinstance(self.df.index, pd.DatetimeIndex):
+            try:
+                self.df.index = pd.to_datetime(self.df.index, errors="coerce")
+            except Exception:
+                pass
+
+        # crear columna Timestamp basada en el índice (mantener índice también)
+        self.df["Timestamp"] = self.df.index
+
+        # guardar parquet final SIN índice (Timestamp queda como columna)
         self.df.to_parquet(self.composed_parquet, index=False)
         logging.info(f"🧩 Parquet compuesto guardado: {self.composed_parquet}")
 
     # =====================================================================
-    #   MERGE DIRECTO SIN PROCESAR COLUMNAS
+    #   MERGE DIRECTO POR ÍNDICE
     # =====================================================================
     def _build_combined_df(self):
         """
         Combina:
-        - el subdataset principal (tabular)
-        - los subdatasets secundarios
-        Hace simple LEFT MERGE por timestamp.
-
-        NO crea columnas nuevas.
-        NO procesa nada.
+        - main dataset
+        - secundarios (tabular o event-encoded)
+        
+        Merge LEFT basado en índice (Timestamp).
         """
 
         df = self.main.df.copy()
@@ -99,7 +125,8 @@ class DatasetComposite:
 
             df = df.merge(
                 sd.df,
-                on=sd.timestamp_col,
+                left_index=True,
+                right_index=True,
                 how="left",
                 suffixes=("", f"_{key}")
             )
@@ -120,32 +147,27 @@ class DatasetComposite:
         }
 
     # =====================================================================
-    #   GET ALL COLUMNS → tabular + events (basado solo en columnas reales)
+    #   GET ALL COLUMNS (FRONT-END)
     # =====================================================================
     def get_all_columns(self):
         """
-        Devuelve TODA la metadata necesaria para la UI:
-        - columnas tabulares
-        - columnas de eventos (raw / from_to)
+        Devuelve TODA la metadata necesaria para el frontend:
+        - columnas tabulares (reales en el parquet)
+        - columnas de eventos (raw / from_to) desde ctl_components.yml
         - agrupación por componentes
-        - mapa de nombres amigables
+        - etiquetas amigables
         """
 
         df_cols = list(self.df.columns)
 
         # ============================================================
-        # 1) TABULARES (del main dataset)
+        # 1) TABULARES
         # ============================================================
         tabular_cols = []
-        tabular_measure_map = {}
-
-        main_comp_meta = {}
-        if hasattr(self.main, "componentes"):
-            main_comp_meta = self.main.componentes.get("components", {})
+        main_comp_meta = self.main.componentes.get("components", {})
 
         for comp_id, comp_data in main_comp_meta.items():
-            meas = comp_data.get("measurements", {})
-            for meas_key, meas_info in meas.items():
+            for meas_key, meas_info in comp_data.get("measurements", {}).items():
 
                 display = meas_info.get("display_name", meas_key)
 
@@ -155,25 +177,23 @@ class DatasetComposite:
                         "type": "tabular",
                         "component": comp_id
                     })
-                    tabular_measure_map[display] = comp_id
 
         # ============================================================
-        # 2) EVENTOS (YA NO SE TOMAN DE COLUMNAS → SE OBTIENEN DEL YAML)
+        # 2) EVENTOS (ctl_components.yml de event-encoded)
         # ============================================================
-
         event_raw = []
         event_from_to = []
         by_component = {}
 
-        # 2.1 detectar el subdataset event-encoded que existe en el composite
+        # localizar el único event-encoded
         event_sd = None
         for sd in self.secondary.values():
-            if sd.type == "event-encoded":
+            if sd.type.lower() == "eventencodeddataset":
                 event_sd = sd
                 break
 
         if event_sd is None:
-            # no hay eventos en este dataset
+            # no hay eventos → solo tabulares
             return {
                 "tabular": tabular_cols,
                 "event_raw": [],
@@ -189,57 +209,39 @@ class DatasetComposite:
 
         yaml_components = event_sd.componentes.get("components", {})
 
-        # ============================
-        # 2.2 RECORRER YAML AGRUPADO
-        # ============================
+        # recorrer componentes
         for comp_id, comp_data in yaml_components.items():
 
-            measurements = comp_data.get("measurements", {})
-            for meas_key, meas_info in measurements.items():
+            for meas_key, meas_info in comp_data.get("measurements", {}).items():
 
-                meas_name = meas_info.get("name", meas_key)
-                meas_blocks = meas_info.get("measurements", {})
+                display = meas_info.get("display_name", meas_key)
+                encodes = meas_info.get("encodes", [])
+                labels = meas_info.get("labels", [])
+                mtype = meas_info.get("type")
 
-                for block_key, block_data in meas_blocks.items():
+                base_item = {
+                    "name": display,
+                    "component": comp_id,
+                    "codes": encodes,
+                    "labels": labels,
+                }
 
-                    encoded = block_data.get("columns_encoded", [])
-                    if not encoded:
-                        continue
+                if mtype == "event":
+                    item = {**base_item, "type": "raw"}
+                    event_raw.append(item)
 
-                    base_item = {
-                        "component": comp_id,
-                        "measurement": meas_name,
-                        "codes": encoded,
-                    }
+                elif mtype == "from_to":
+                    item = {**base_item, "type": "from_to"}
+                    event_from_to.append(item)
 
-                    if block_key.endswith("-raw"):
-                        item = {
-                            **base_item,
-                            "name": f"{meas_name}_raw",
-                            "type": "raw",
-                        }
-                        event_raw.append(item)
-                        by_component.setdefault(comp_id, []).append(item)
-
-                    elif block_key.endswith("-from_to"):
-                        item = {
-                            **base_item,
-                            "name": f"{meas_name}_from_to",
-                            "type": "from_to",
-                        }
-                        event_from_to.append(item)
-                        by_component.setdefault(comp_id, []).append(item)
+                by_component.setdefault(comp_id, []).append(base_item)
 
         # ============================================================
-        # 3) COMPONENTES META (mezcla tabular + eventos)
+        # 3) UNIFICAR META
         # ============================================================
-        components_meta = {}
+        components_meta = dict(main_comp_meta)
 
-        # primero tabular
-        for comp_id, comp_data in main_comp_meta.items():
-            components_meta[comp_id] = comp_data
-
-        # añadir los de eventos si no existen en tabular
+        # añadir los componentes de eventos si no existen
         for comp_id, comp_data in yaml_components.items():
             if comp_id not in components_meta:
                 components_meta[comp_id] = comp_data

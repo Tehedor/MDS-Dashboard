@@ -1,0 +1,53 @@
+# Datasets/clean_pipelines.yml
+clean_functions:
+
+
+  # ============================================================
+  # FUNCIÓN 1 — Asignar timestamp como índice
+  # ============================================================
+  - assign_timestamp_index:
+      module: "utils.clean_functions._1_assign_timestamp"
+      func: "assign_timestamp_index"
+      description: "Convertir columna timestamp a datetime y establecerla como índice"
+
+  # ============================================================
+  # FUNCIÓN 2 — SOLO PARA EventEncodedDataSet
+  # Convierte (Timestamp, event) → columnas por evento + arrays agregados
+  # ============================================================
+  - expand_event_codes:
+      module: "utils.clean_functions._2_expand_event_codes"
+      func: "expand_event_codes"
+      description: "Expandir eventos del diccionario en columnas individuales y agregados"
+
+  # ============================================================
+  # FUNCIONES OPCIONALES / TABULARES
+  # ============================================================
+#   - load_and_process_data:
+#       module: "utils.clean_functions._1_load_and_process_data"
+#       func: "load_and_process_data"
+#       description: "Cargar y preprocesar datos tabulares (si aplica)"
+
+  - clean_and_unify_duplicates:
+      module: "utils.clean_functions._3_clean_and_unify_duplicates"
+      func: "clean_and_unify_duplicates"
+      description: "Eliminar duplicados y unificar datos"
+
+  - rellenar_timestamps:
+      module: "utils.clean_functions._4_missing_data"
+      func: "rellenar_timestamps"
+      description: "Detectar frecuencias negativas y generar reporte"
+  
+  - negative_freq_report:
+      module: "utils.clean_functions._5_negative_frec"
+      func: "negative_freq_report"
+      description: "Detectar frecuencias negativas y generar reporte"
+
+#   - rellenar_timestamps:
+#       module: "utils.clean_functions._4_missing_data"
+#       func: "rellenar_timestamps"
+#       description: "Interpolar o rellenar timestamps faltantes"
+
+#   - normalize_timestamp_column:
+#       module: "utils.clean_functions._5_nomalizar_timestamps"
+#       func: "normalize_timestamp_column"
+#       description: "Normalizar y corregir formato de timestamp"

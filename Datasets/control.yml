@@ -22,6 +22,14 @@ subdatasets:
     merge_on: "Timestamp"
     strategy: "sparse-columns"
 
+  Epoch-DatasetV2:
+    type: event-encoded
+    path: "Epoch-DatasetV2"
+    control_file: "control_dataset.yml"
+    timestamp_col: "Timestamp"
+    merge_on: "Timestamp"
+    strategy: "sparse-columns"
+
 
 ###############################################################
 # 2️⃣ DATASETS FINALES / COMPUESTOS
@@ -35,15 +43,15 @@ Datasets:
       main: "MDS-Dataset"
       epoch: "Epoch-Dataset"
   
-  MDS-Dataset:
-    subdatasets:
-      main: "MDS-Dataset"
-      epoch: null
+  # MDS-Dataset:
+  #   subdatasets:
+  #     main: "MDS-Dataset"
+  #     epoch: null
       
-  MDS-Dataset-V2:
-    subdatasets:
-      main: "MDS-Dataset"
-      epoch: null
+  # MDS-Dataset-V2:
+  #   subdatasets:
+  #     main: "MDS-Dataset"
+  #     epoch: "Epoch-DatasetV2"
 
 ###############################################################
 # 3️⃣ Dataset activado por defecto en la app

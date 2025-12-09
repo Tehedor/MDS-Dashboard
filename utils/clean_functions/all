@@ -1,0 +1,130 @@
+# utils/clean_functions/_0_merge_datasets.py
+import logging
+import os
+import glob
+from typing import List, Optional, Union
+import pandas as pd
+
+
+def merge_all_datasets(
+    patterns: Union[str, List[str]],
+    max_files: Optional[int] = None,
+    year_filter: Optional[str] = None,
+) -> pd.DataFrame:
+
+    if isinstance(patterns, str):
+        patterns = [patterns]
+
+    file_list = []
+    for p in patterns:
+        if os.path.isfile(p):
+            file_list.append(p)
+        else:
+            file_list.extend(glob.glob(p))
+
+    if year_filter:
+        file_list = [f for f in file_list if year_filter in os.path.basename(f)]
+
+    if not file_list:
+        raise FileNotFoundError("merge_all_datasets(): no files found")
+
+    if max_files:
+        file_list = file_list[:max_files]
+
+    dfs = []
+    for f in file_list:
+        df_part = pd.read_csv(f, sep=",", decimal=".")
+        dfs.append(df_part)
+
+    df = pd.concat(dfs, ignore_index=True)
+    logging.info(f"[0] merge_all_datasets → {len(df)} filas")
+    return df
+# utils/clean_functions/_1_assign_timestamp.py
+import logging
+import pandas as pd
+
+
+def assign_timestamp_index(df: pd.DataFrame, timestamp_col: str) -> pd.DataFrame:
+    if timestamp_col not in df.columns:
+        raise RuntimeError(f"Columna timestamp '{timestamp_col}' no encontrada")
+
+    df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors="coerce")
+
+    before = len(df)
+    df = df.dropna(subset=[timestamp_col])
+    logging.info(f"[1] assign_timestamp_index → limpiadas {before - len(df)} filas corruptas")
+
+    df = df.sort_values(timestamp_col)
+    df = df.set_index(timestamp_col)
+
+    logging.info(f"[1] Timestamp index aplicado → {df.index.dtype}")
+    return df
+# utils/clean_functions/_2_expand_event_codes.py
+import logging
+import pandas as pd
+import numpy as np
+
+
+def expand_event_codes(df: pd.DataFrame, ctl_components: dict) -> pd.DataFrame:
+    """
+    Convierte un dataset epoch (Timestamp, event) en columnas por medida.
+    También genera:
+      - events_raw     → lista de códigos raw
+      - events_from_to → lista de códigos from_to
+    """
+
+    if "event" not in df.columns:
+        raise RuntimeError("expand_event_codes() → falta columna 'event'")
+
+    # ------------------------------------------------------------
+    # Recolectamos todas las columnas que deben existir
+    # ------------------------------------------------------------
+    raw_map = {}
+    ft_map = {}
+
+    for comp, compdata in ctl_components["components"].items():
+        meas = compdata["measurements"]
+
+        for mname, mdata in meas.items():
+            codes = mdata["encodes"]
+            if mname.endswith("-raw"):
+                raw_map[mname] = set(codes)
+            elif mname.endswith("-from_to"):
+                ft_map[mname] = set(codes)
+
+    # ------------------------------------------------------------
+    # Convertir df (varias filas por timestamp) → grupos por timestamp
+    # ------------------------------------------------------------
+    grouped = df.groupby(df.index)["event"].apply(list).reset_index()
+    grouped = grouped.rename(columns={"event": "codes"})
+
+    # ------------------------------------------------------------
+    # Crear columnas por cada medida
+    # ------------------------------------------------------------
+    out = grouped.copy()
+
+    # columnas raw
+    for name, code_set in raw_map.items():
+        out[name] = out["codes"].apply(
+            lambda arr: next((c for c in arr if c in code_set), None)
+        )
+
+    # columnas from_to
+    for name, code_set in ft_map.items():
+        out[name] = out["codes"].apply(
+            lambda arr: next((c for c in arr if c in code_set), None)
+        )
+
+    # ------------------------------------------------------------
+    # columnas agregadas totales
+    # ------------------------------------------------------------
+    out["events_raw"] = out["codes"].apply(
+        lambda arr: [c for c in arr if any(c in code_set for code_set in raw_map.values())]
+    )
+
+    out["events_from_to"] = out["codes"].apply(
+        lambda arr: [c for c in arr if any(c in code_set for code_set in ft_map.values())]
+    )
+
+    logging.info(f"[2] expand_event_codes → {len(out)} timestamps únicos")
+    return out.set_index("Timestamp")
