@@ -48,10 +48,10 @@ Datasets:
   #     main: "MDS-Dataset"
   #     epoch: null
       
-  # MDS-Dataset-V2:
-  #   subdatasets:
-  #     main: "MDS-Dataset"
-  #     epoch: "Epoch-DatasetV2"
+  MDS-Dataset-V2:
+    subdatasets:
+      main: "MDS-Dataset"
+      epoch: "Epoch-DatasetV2"
 
 ###############################################################
 # 3️⃣ Dataset activado por defecto en la app

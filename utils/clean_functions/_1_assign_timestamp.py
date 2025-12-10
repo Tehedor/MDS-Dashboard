@@ -4,31 +4,50 @@ import pandas as pd
 
 def assign_timestamp_index(subdataset):
     """
-    Usa subdataset.df y subdataset.metadata['timestamp_col']
-    para convertir el timestamp en índice.
+    Normaliza la columna Timestamp venga en el formato que venga (string, float, epoch).
+    Mantiene SIEMPRE la columna 'Timestamp' y además la usa como índice.
     """
-    df = subdataset.df
-    timestamp_col = subdataset.metadata.get("timestamp_col", "Timestamp")
 
-    if timestamp_col not in df.columns:
+    df = subdataset.df
+    ts_col = subdataset.metadata.get("timestamp_col", "Timestamp")
+
+    if ts_col not in df.columns:
         raise RuntimeError(
-            f"[assign_timestamp_index] Columna timestamp '{timestamp_col}' no encontrada"
+            f"[assign_timestamp_index] Columna timestamp '{ts_col}' no encontrada"
         )
 
-    # convertir a datetime
-    df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors="coerce")
+    # ============================================================
+    # 1) Detectar si el timestamp es epoch (float/int)
+    # ============================================================
+    sample = df[ts_col].iloc[0]
 
+    # Caso epoch (float, int o string numérica)
+    if isinstance(sample, (float, int)) or (
+        isinstance(sample, str) and sample.replace(".", "", 1).isdigit()
+    ):
+        logging.info("[assign_timestamp_index] Detectado timestamp tipo epoch → convirtiendo…")
+        df[ts_col] = pd.to_datetime(df[ts_col], unit="s", errors="coerce")
+
+    else:
+        # Caso timestamp normal ISO
+        df[ts_col] = pd.to_datetime(df[ts_col], errors="coerce")
+
+    # Eliminar filas inválidas
     before = len(df)
-    df = df.dropna(subset=[timestamp_col])
-    logging.info(f"[0] assign_timestamp_index → limpiadas {before - len(df)} filas corruptas")
+    df = df.dropna(subset=[ts_col])
+    removed = before - len(df)
+    logging.info(f"[assign_timestamp_index] Filas eliminadas por timestamp inválido: {removed}")
 
-    # ordenar
-    df = df.sort_values(timestamp_col)
+    # Ordenar por timestamp
+    df = df.sort_values(ts_col)
 
-    # colocar índice
-    df = df.set_index(timestamp_col)
+    # ============================================================
+    # 2) Mantener columna Timestamp Y asignar índice
+    # ============================================================
+    df = df.set_index(ts_col, drop=False)
 
-    logging.info(f"[0] Timestamp index aplicado → dtype: {df.index.dtype}")
+    logging.info(f"[assign_timestamp_index] Índice aplicado: dtype={df.index.dtype}")
 
-    # devolver el dataframe para que SubDataset lo guarde como self.df
+    # Guardar resultado
+    subdataset.df = df
     return df

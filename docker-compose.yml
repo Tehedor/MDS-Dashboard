@@ -1,0 +1,17 @@
+services:
+  dash-app:
+    build: .
+    container_name: mi_app_dash
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./Datasets:/app/Datasets
+      - ./debug:/app/debug
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '2.0'
+        reservations:
+          memory: 3G
+    restart: unless-stopped

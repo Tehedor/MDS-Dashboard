@@ -1,6 +1,9 @@
 .
+├── __pycache__
+│   └── app.cpython-313.pyc
 ├── a
 ├── app.py
+├── app.sh
 ├── assets
 │   └── styles.css
 ├── callbacks
@@ -10,11 +13,11 @@
 │   ├── filtros.py
 │   ├── grafico_temporal.py
 │   ├── 'grafico_temporal copy.py'
-│   ├── 'grafico_temporal copy 2.py'
-│   ├── 'grafico_temporal copy 3.py'
-│   ├── 'grafico_temporal copyas.py'
 │   └── waste
 │       ├── 'grafico_temporal copy.py'
+│       ├── 'grafico_temporal copy 2.py'
+│       ├── 'grafico_temporal copy 3.py'
+│       ├── 'grafico_temporal copyas.py'
 │       ├── 'grafico_temporal red.py'
 │       ├── 'grafico_temporal red_orange.py'
 │       └── 'grafico_temporal red_orange2.py'
@@ -72,14 +75,14 @@
 │   │   └── debug.cpython-313.pyc
 │   ├── all.json
 │   ├── all_columns.txt
+│   ├── colls_info_MDS-Complete.txt
+│   ├── colls_info_MDS-Dataset-V2.txt
+│   ├── colls_info_MDS-Dataset.txt
 │   ├── debug.py
-│   ├── debug_at_2023-07-31_23-07-11.txt
-│   ├── debug_composite_columns.txt
-│   ├── debug_fromto_missing_column.txt
-│   ├── debug_get_all_columns.txt
-│   ├── debug_main_columns.txt
-│   ├── debug_secondary_epoch_columns.txt
-│   └── debug_selected_dataset.txt
+│   ├── event_dictionary_Epoch-Dataset.txt
+│   └── event_dictionary_Epoch-DatasetV2.txt
+├── docker-compose.yml
+├── Dockerfile
 ├── layouts
 │   ├── __pycache__
 │   │   ├── components_selector.cpython-313.pyc

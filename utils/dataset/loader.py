@@ -252,10 +252,10 @@ def _build_event_encoded(sd):
     out.to_parquet(sd.parquet_file, index=False)
     print(f"✔ Parquet de eventos generado: {sd.parquet_file} | filas={len(out)}")
 
-    save_debug_info(
-        content_source=out.head(20),
-        filename=f"debug_{sd.name}_event_encoded_head.txt",
-        head=f"# head of event-encoded parquet for {sd.name}"
-    )
+    # save_debug_info(
+    #     content_source=out.head(20),
+    #     filename=f"debug_{sd.name}_event_encoded_head.txt",
+    #     head=f"# head of event-encoded parquet for {sd.name}"
+    # )
 
     return

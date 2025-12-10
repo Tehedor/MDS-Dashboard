@@ -24,7 +24,7 @@ components:
         - 6
       Battery_Active_Power-from_to:
         display_name: Battery_Active_Power-from_to
-        description: Evento de cambio de estado de Battery_Active_Power
+        description: Cambio de estado de Battery_Active_Power
         type: from_to
         unit: event-change
         labels:
@@ -114,7 +114,7 @@ components:
         - 42
       GE_Active_Power-from_to:
         display_name: GE_Active_Power-from_to
-        description: Evento de cambio de estado de GE_Active_Power
+        description: Cambio de estado de GE_Active_Power
         type: from_to
         unit: event-change
         labels:
@@ -200,7 +200,7 @@ components:
         - 76
       MG-LV-MSB_AC_Voltage-from_to:
         display_name: MG-LV-MSB_AC_Voltage-from_to
-        description: Evento de cambio de estado de MG-LV-MSB_AC_Voltage
+        description: Cambio de estado de MG-LV-MSB_AC_Voltage
         type: from_to
         unit: event-change
         labels:
@@ -270,7 +270,7 @@ components:
         - 104
       MG-LV-MSB_Frequency-from_to:
         display_name: MG-LV-MSB_Frequency-from_to
-        description: Evento de cambio de estado de MG-LV-MSB_Frequency
+        description: Cambio de estado de MG-LV-MSB_Frequency
         type: from_to
         unit: event-change
         labels:
@@ -320,7 +320,7 @@ components:
         - 120
       PVPCS_Active_Power-from_to:
         display_name: PVPCS_Active_Power-from_to
-        description: Evento de cambio de estado de PVPCS_Active_Power
+        description: Cambio de estado de PVPCS_Active_Power
         type: from_to
         unit: event-change
         labels:
@@ -368,7 +368,7 @@ components:
         - 135
       Receiving_Point_AC_Voltage-from_to:
         display_name: Receiving_Point_AC_Voltage-from_to
-        description: Evento de cambio de estado de Receiving_Point_AC_Voltage
+        description: Cambio de estado de Receiving_Point_AC_Voltage
         type: from_to
         unit: event-change
         labels:

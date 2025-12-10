@@ -10,9 +10,50 @@ from layouts.visuals.graph_style import get_graph_layout
 
 log = logging.getLogger("grafico_temporal")
 
+# =====================================================================
+# 🔥 NUEVO MAPA DE EVENTOS (invertido: código → nombre)
+# =====================================================================
+EVENT_MAP = {
+    1: "Q05", 2: "Q10", 3: "Q20", 4: "Q50", 5: "Q90", 6: "Q95",
+    7: "Q05_to_Q10", 8: "Q05_to_Q20", 9: "Q05_to_Q50", 10: "Q05_to_Q90", 11: "Q05_to_Q95",
+    12: "Q10_to_Q05", 13: "Q10_to_Q20", 14: "Q10_to_Q50", 15: "Q10_to_Q90", 16: "Q10_to_Q95",
+    17: "Q20_to_Q05", 18: "Q20_to_Q10", 19: "Q20_to_Q50", 20: "Q20_to_Q90", 21: "Q20_to_Q95",
+    22: "Q50_to_Q05", 23: "Q50_to_Q10", 24: "Q50_to_Q20", 25: "Q50_to_Q90", 26: "Q50_to_Q95",
+    27: "Q90_to_Q05", 28: "Q90_to_Q10", 29: "Q90_to_Q20", 30: "Q90_to_Q50", 31: "Q90_to_Q95",
+    32: "Q95_to_Q05", 33: "Q95_to_Q10", 34: "Q95_to_Q20", 35: "Q95_to_Q50", 36: "Q95_to_Q90",
+    37: "Q05", 38: "Q10", 39: "Q20", 40: "Q50", 41: "Q90", 42: "Q95",
+    43: "Q05_to_Q10", 44: "Q05_to_Q20", 45: "Q05_to_Q50", 46: "Q05_to_Q90", 47: "Q05_to_Q95",
+    48: "Q10_to_Q05", 49: "Q10_to_Q20", 50: "Q10_to_Q50", 51: "Q10_to_Q95",
+    52: "Q20_to_Q05", 53: "Q20_to_Q10", 54: "Q20_to_Q50", 55: "Q20_to_Q90", 56: "Q20_to_Q95",
+    57: "Q50_to_Q05", 58: "Q50_to_Q10", 59: "Q50_to_Q20", 60: "Q50_to_Q90", 61: "Q50_to_Q95",
+    62: "Q90_to_Q05", 63: "Q90_to_Q20", 64: "Q90_to_Q50", 65: "Q90_to_Q95",
+    66: "Q95_to_Q05", 67: "Q95_to_Q10", 68: "Q95_to_Q20", 69: "Q95_to_Q50", 70: "Q95_to_Q90",
+    71: "Q05", 72: "Q10", 73: "Q20", 74: "Q50", 75: "Q90", 76: "Q95",
+    77: "Q05_to_Q10", 78: "Q05_to_Q20", 79: "Q05_to_Q50", 80: "Q05_to_Q95",
+    81: "Q10_to_Q05", 82: "Q10_to_Q20", 83: "Q10_to_Q50",
+    84: "Q20_to_Q05", 85: "Q20_to_Q10", 86: "Q20_to_Q50", 87: "Q20_to_Q90", 88: "Q20_to_Q95",
+    89: "Q50_to_Q05", 90: "Q50_to_Q10", 91: "Q50_to_Q20", 92: "Q50_to_Q90", 93: "Q50_to_Q95",
+    94: "Q90_to_Q10", 95: "Q90_to_Q20", 96: "Q90_to_Q50", 97: "Q90_to_Q95",
+    98: "Q95_to_Q20", 99: "Q95_to_Q50", 100: "Q95_to_Q90",
+    101: "Q05", 102: "Q20", 103: "Q50", 104: "Q95",
+    105: "Q05_to_Q20", 106: "Q05_to_Q50", 107: "Q05_to_Q95",
+    108: "Q20_to_Q05", 109: "Q20_to_Q50", 110: "Q20_to_Q95",
+    111: "Q50_to_Q05", 112: "Q50_to_Q20", 113: "Q50_to_Q95",
+    114: "Q95_to_Q05", 115: "Q95_to_Q20", 116: "Q95_to_Q50",
+    117: "Q05", 118: "Q50", 119: "Q90", 120: "Q95",
+    121: "Q05_to_Q50", 122: "Q50_to_Q05", 123: "Q50_to_Q90", 124: "Q50_to_Q95",
+    125: "Q90_to_Q05", 126: "Q90_to_Q50", 127: "Q90_to_Q95",
+    128: "Q95_to_Q05", 129: "Q95_to_Q50", 130: "Q95_to_Q90",
+    131: "Q05", 132: "Q10", 133: "Q20", 134: "Q50", 135: "Q95",
+    136: "Q05_to_Q10", 137: "Q05_to_Q20", 138: "Q05_to_Q50",
+    139: "Q10_to_Q05", 140: "Q10_to_Q20", 141: "Q10_to_Q50", 142: "Q10_to_Q95",
+    143: "Q20_to_Q05", 144: "Q20_to_Q10", 145: "Q20_to_Q50", 146: "Q20_to_Q95",
+    147: "Q50_to_Q05", 148: "Q50_to_Q10", 149: "Q50_to_Q20", 150: "Q50_to_Q95",
+    151: "Q95_to_Q05", 152: "Q95_to_Q10", 153: "Q95_to_Q20", 154: "Q95_to_Q50"
+}
 
 # =====================================================================
-# 🔄 ACTUALIZAR GRÁFICO — AHORA CON EVENT_DICTIONARY DINÁMICO y GC
+# 🔄 ACTUALIZAR GRÁFICO COMPATIBLE CON EVENT_MAP INVERTIDO
 # =====================================================================
 def actualizar_grafico(
     columnas_seleccionadas,
@@ -22,16 +63,10 @@ def actualizar_grafico(
     format_label_with_unit,
     columnas_info,
     slider_data,
-    event_dictionary=None,   # argumento opcional (app.py lo pasará)
-    default_n_shown_samples=1000,  # reducir por defecto para memoria
+    default_n_shown_samples=550,
 ):
 
-    # Primer GC por si quedan cosas
     gc.collect()
-
-    # Asegurarnos de que no rompa si app.py aún no pasa el diccionario
-    if event_dictionary is None:
-        event_dictionary = {}
 
     if not columnas_seleccionadas:
         return go.Figure().update_layout(title="Selecciona al menos una serie.")
@@ -74,8 +109,6 @@ def actualizar_grafico(
     x_view = full_x[idx_start:idx_end]
 
     # ===== FIGURE RESAMPLER =====
-    # GC justo antes de crear estructuras pesadas
-    gc.collect()
     fig = FigureResampler(
         go.Figure(),
         default_downsampler=EveryNthPoint(),
@@ -102,8 +135,10 @@ def actualizar_grafico(
         # ============================
         if col_name.endswith("-from_to"):
 
+            # Columna base ( Battery_Active_Power_Q05_to_Q10-from_to → Battery_Active_Power )
             clean = col_name.replace("-from_to", "")
             parts = clean.split("_")
+            # eliminación de Qxx o Qxx_to_Qyy
             parts = [p for p in parts if not p.startswith("Q")]
             col_base = "_".join(parts)
 
@@ -112,7 +147,7 @@ def actualizar_grafico(
             else:
                 y_base = np.zeros_like(y)
 
-            # Procesar cada punto
+            # Procesar cada código
             for i, v in enumerate(y):
                 if pd.isna(v) or v in (-999999, 999999):
                     continue
@@ -122,13 +157,13 @@ def actualizar_grafico(
                 except:
                     code = None
 
-                event_name = event_dictionary.get(code, "Evento desconocido")
+                event_name = EVENT_MAP.get(code, "Evento desconocido")
 
                 fromto_points.append(
                     (x_view[i], y_base[i], event_name, code)
                 )
 
-            continue  # Los eventos no se dibujan como línea
+            continue  # Saltamos dibujar línea
 
         # ============================
         # 📈 SERIES NORMALES
@@ -137,10 +172,8 @@ def actualizar_grafico(
         is_null = (y == 999999)
         is_valid = ~(is_anomaly | is_null)
 
-        if np.any(is_anomaly):
-            anomalous_ts.extend(x_view[is_anomaly])
-        if np.any(is_null):
-            null_ts.extend(x_view[is_null])
+        anomalous_ts.extend(x_view[is_anomaly])
+        null_ts.extend(x_view[is_null])
 
         if np.any(is_valid):
             yy = y[is_valid]
@@ -206,6 +239,4 @@ def actualizar_grafico(
         rangeslider=dict(visible=True, range=[slider_min, slider_max])
     )
 
-    # Liberar posibles referencias temporales
-    gc.collect()
     return fig
