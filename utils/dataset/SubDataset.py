@@ -5,6 +5,7 @@ import pandas as pd
 import yaml
 import importlib
 import glob
+import re
 
 from utils.helpers import load_config
 from debug.debug import save_debug_info
@@ -21,6 +22,43 @@ class SubDataset:
       ✗ NO mantiene df en memoria (lazy-loading real)
     """
 
+    # ------------------------------------------------------------------
+    # Regex / Parser universal para eventos (V1/V2)
+    # ------------------------------------------------------------------
+    EVENT_REGEX = re.compile(
+        r'^(?P<component>.+?)_'
+        r'(?P<q_from>Q[0-9]+)'
+        r'(?:_to_(?P<q_to>Q[0-9]+))?$'
+    )
+
+    @staticmethod
+    def parse_event_name(event_name: str):
+        """
+        Devuelve un dict estandarizado:
+            {
+                "component": str | None,
+                "q_from": str | None,
+                "q_to": str | None,
+                "raw_name": str
+            }
+        Funciona con V1 y V2.
+        """
+        if not isinstance(event_name, str):
+            return {"component": None, "q_from": None, "q_to": None, "raw_name": event_name}
+
+        match = SubDataset.EVENT_REGEX.match(event_name)
+        if not match:
+            return {"component": None, "q_from": None, "q_to": None, "raw_name": event_name}
+
+        gd = match.groupdict()
+        return {
+            "component": gd["component"],
+            "q_from": gd["q_from"],
+            "q_to": gd["q_to"],
+            "raw_name": event_name,
+        }
+
+    # ======================================================================
     def __init__(self, name: str, root: Path, cfg: dict):
         self.name = name
         self.root = root
@@ -45,13 +83,13 @@ class SubDataset:
         self.parquet_file = self.processed_dir / f"{self.name}.parquet"
 
         # ---------------------------------------------------------
-        # Cargar componentes
+        # Cargar componentes globales y locales
         # ---------------------------------------------------------
         self._load_components()
         self._validate_components()
 
         # ---------------------------------------------------------
-        # EventEncoded: cargar dictionary
+        # EventEncoded: cargar diccionario
         # ---------------------------------------------------------
         self._load_dictionary()
 
@@ -66,21 +104,17 @@ class SubDataset:
         self._generate_ctl_components()
 
         # ---------------------------------------------------------
-        # 🔥 Ejecutar pipeline → generar parquet si no existe
+        # Ejecutar pipeline → generar parquet si no existe
         # ---------------------------------------------------------
         if not self.parquet_file.exists():
             self._load_raw_csv()
             self._run_clean_pipeline()
 
-        # ---------------------------------------------------------
-        # IMPORTANTE:
-        # NO cargamos df a RAM aquí.
-        # ---------------------------------------------------------
         if hasattr(self, "df"):
             del self.df
 
     # ======================================================================
-    #       COMPONENTES
+    # COMPONENTES
     # ======================================================================
     def _load_components(self):
         global_components = load_config(self.root / "components.yml")
@@ -90,7 +124,6 @@ class SubDataset:
         self.components_global = global_components.get("components", {})
         self.timestamps_global = global_components.get("timestamps", {})
 
-        # tabular usa componentes locales
         if self.type == "TabularDataSet":
             self.components_local = self.config.get("components")
             if self.components_local is None:
@@ -107,12 +140,11 @@ class SubDataset:
         for comp_name in self.components_local.keys():
             if comp_name not in self.components_global:
                 raise RuntimeError(
-                    f"El subdataset '{self.name}' declara '{comp_name}' "
-                    f"pero no existe en components.yml global"
+                    f"El subdataset '{self.name}' declara '{comp_name}' pero no existe en components.yml global"
                 )
 
     # ======================================================================
-    #       DICTIONARY EVENTOS
+    # DICTIONARY EVENTOS
     # ======================================================================
     def _load_dictionary(self):
         self.timestamp_col = self.cfg.get("timestamp_col", "Timestamp")
@@ -127,26 +159,36 @@ class SubDataset:
             self.dict_events = load_config(self.path / dict_path)
             self.build_event_dictionary()
 
+    # Normalizador universal Qxx / Qxx_to_Qyy
+    def normalize_label(self, raw: str) -> str:
+        info = self.parse_event_name(raw)
+
+        q_from = info.get("q_from")
+        q_to = info.get("q_to")
+
+        if q_from is None:
+            return raw
+
+        return f"{q_from}_to_{q_to}" if q_to else q_from
+
     def build_event_dictionary(self):
+        """Construye un diccionario uniforme code → label normalizado."""
         if self.dict_events is None:
             self.event_dictionary = {}
             return {}
 
         event_dict = {}
 
-        for long_name, code in self.dict_events.items():
-            if "_from_" not in long_name:
-                short = long_name.split("_")[-1]
-            else:
-                short = long_name.split("from_")[-1]
-
-            event_dict[int(code)] = short
+        for long_label, code in self.dict_events.items():
+            code = int(code)
+            normalized = self.normalize_label(long_label)
+            event_dict[code] = normalized
 
         self.event_dictionary = event_dict
         return event_dict
 
     # ======================================================================
-    #     PIPELINE CLEANING
+    # PIPELINE CLEANING
     # ======================================================================
     def _validate_clean_pipeline(self):
         self.clean_global = load_config(self.root / "clean_pipelines.yml")
@@ -168,7 +210,7 @@ class SubDataset:
                 )
 
     # ======================================================================
-    #       CTL-COMPONENTS
+    # CTL-COMPONENTS (TABULAR + EVENTOS)
     # ======================================================================
     def _generate_ctl_components(self):
         ctl_path = self.path / "ctl_components.yml"
@@ -209,18 +251,30 @@ class SubDataset:
     def _build_event_components(self):
         out = {"components": {}}
         grouped = {}
+        event_dict = self.event_dictionary
 
-        for key, code in self.dict_events.items():
-            if "_from_" in key:
-                base = key.split("_from_")[0]
-                grouped.setdefault(base, {"raw": [], "from_to": []})
-                grouped[base]["from_to"].append((key, code))
+        for full_key, code in self.dict_events.items():
+            code = int(code)
+
+            info = self.parse_event_name(full_key)
+            component = info.get("component") or full_key
+            q_to = info.get("q_to")
+
+            # FIX: algunos labels V1 venían con "_from" dentro del componente
+            if isinstance(component, str):
+                component = component.replace("_from", "")
+
+            base = component
+            grouped.setdefault(base, {"raw": [], "from_to": []})
+
+            label = event_dict.get(code, self.normalize_label(full_key))
+
+            if q_to is None:
+                grouped[base]["raw"].append((label, code))
             else:
-                base = key.split("_Q")[0]
-                grouped.setdefault(base, {"raw": [], "from_to": []})
-                grouped[base]["raw"].append((key, code))
+                grouped[base]["from_to"].append((label, code))
 
-        for base, blocks in grouped.items():
+        for base, info in grouped.items():
             comp_name = self._infer_component_from_base(base)
 
             if comp_name not in out["components"]:
@@ -231,29 +285,31 @@ class SubDataset:
                     "measurements": {},
                 }
 
-            # RAW
-            labels_raw = [k.split(base + "_")[1] for k, _ in blocks["raw"]]
-            enc_raw = [c for _, c in blocks["raw"]]
-            out["components"][comp_name]["measurements"][f"{base}-raw"] = {
-                "display_name": f"{base}-raw",
-                "description": f"Evento de estado de {base}",
-                "type": "event",
-                "unit": "event",
-                "labels": labels_raw,
-                "encodes": enc_raw,
-            }
+            raw_labels = [lbl for lbl, _ in info["raw"]]
+            raw_codes = [code for _, code in info["raw"]]
 
-            # FROM-TO
-            labels_ft = [k.split(base + "_")[1] for k, _ in blocks["from_to"]]
-            enc_ft = [c for _, c in blocks["from_to"]]
-            out["components"][comp_name]["measurements"][f"{base}-from_to"] = {
-                "display_name": f"{base}-from_to",
-                "description": f"Cambio de estado de {base}",
-                "type": "from_to",
-                "unit": "event-change",
-                "labels": labels_ft,
-                "encodes": enc_ft,
-            }
+            if raw_labels or raw_codes:
+                out["components"][comp_name]["measurements"][f"{base}-raw"] = {
+                    "display_name": f"{base}-raw",
+                    "description": f"Evento de estado de {base}",
+                    "type": "event",
+                    "unit": "event",
+                    "labels": raw_labels,
+                    "encodes": raw_codes,
+                }
+
+            ft_labels = [lbl for lbl, _ in info["from_to"]]
+            ft_codes = [code for _, code in info["from_to"]]
+
+            if ft_labels or ft_codes:
+                out["components"][comp_name]["measurements"][f"{base}-from_to"] = {
+                    "display_name": f"{base}-from_to",
+                    "description": f"Cambio de estado de {base}",
+                    "type": "from_to",
+                    "unit": "event-change",
+                    "labels": ft_labels,
+                    "encodes": ft_codes,
+                }
 
         return out
 
@@ -264,15 +320,15 @@ class SubDataset:
         return base.split("_")[0]
 
     # ======================================================================
-    #       LECTURA CSV RAW
+    # CSV RAW
     # ======================================================================
     def _load_raw_csv(self):
+        """Solo carga CSV, NO toca timestamps."""
         if self.parquet_file.exists():
             return
 
         raw_dir = self.path / "raw"
-        pattern = str(raw_dir / "*.csv")
-        files = glob.glob(pattern)
+        files = glob.glob(str(raw_dir / "*.csv"))
 
         if not files:
             raise RuntimeError(f"No hay CSV en {raw_dir}")
@@ -280,14 +336,13 @@ class SubDataset:
         dfs = [pd.read_csv(f) for f in files]
         df_raw = pd.concat(dfs, ignore_index=True)
 
-        ts_col = self.metadata.get("timestamp_col", "Timestamp")
-        df_raw[ts_col] = pd.to_datetime(df_raw[ts_col], errors="coerce")
-        df_raw = df_raw.dropna(subset=[ts_col]).sort_values(ts_col)
+        ts = self.metadata.get("timestamp_col", "Timestamp")
+        df_raw = df_raw.dropna(subset=[ts]).sort_values(ts)
 
         self.df = df_raw.copy()
 
     # ======================================================================
-    #       PIPELINE → GENERAR PARQUET
+    # CLEAN PIPELINE → PARQUET
     # ======================================================================
     def _run_clean_pipeline(self):
         if self.parquet_file.exists():
@@ -301,7 +356,6 @@ class SubDataset:
                 continue
 
             meta = next(f[func_name] for f in funcs_global if func_name in f)
-
             module = importlib.import_module(meta["module"])
             func = getattr(module, meta["func"])
 
@@ -313,16 +367,9 @@ class SubDataset:
         logging.info(f"📦 Guardado parquet limpio: {self.parquet_file}")
 
     # ======================================================================
-    #       CARGA LAZY DEL PARQUET (si lo necesita DatasetComposite)
+    # CARGA DF
     # ======================================================================
     def load_df(self):
-        """Carga df desde parquet bajo demanda."""
         df = pd.read_parquet(self.parquet_file)
-
-        if df.index.dtype != "datetime64[ns]":
-            try:
-                df.index = pd.to_datetime(df.index)
-            except Exception:
-                pass
-
         return df
+

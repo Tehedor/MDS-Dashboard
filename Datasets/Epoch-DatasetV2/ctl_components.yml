@@ -11,21 +11,35 @@ components:
         labels:
         - Q50
         - Q05
+        - Q95
+        - Q20
+        - Q10
+        - Q90
+        encodes:
+        - 1
+        - 79
+        - 84
+        - 98
+        - 123
+        - 134
+      Battery_Active_Power-from_to:
+        display_name: Battery_Active_Power-from_to
+        description: Cambio de estado de Battery_Active_Power
+        type: from_to
+        unit: event-change
+        labels:
         - Q05_to_Q50
         - Q05_to_Q95
         - Q50_to_Q05
         - Q50_to_Q95
-        - Q95
         - Q95_to_Q05
         - Q95_to_Q50
-        - Q20
         - Q20_to_Q50
         - Q50_to_Q20
         - Q05_to_Q20
         - Q20_to_Q95
         - Q05_to_Q10
         - Q05_to_Q90
-        - Q10
         - Q10_to_Q05
         - Q10_to_Q20
         - Q10_to_Q50
@@ -36,7 +50,6 @@ components:
         - Q20_to_Q90
         - Q50_to_Q10
         - Q50_to_Q90
-        - Q90
         - Q90_to_Q05
         - Q90_to_Q10
         - Q90_to_Q20
@@ -46,23 +59,18 @@ components:
         - Q95_to_Q20
         - Q95_to_Q90
         encodes:
-        - 1
-        - 79
         - 80
         - 81
         - 82
         - 83
-        - 84
         - 85
         - 86
-        - 98
         - 99
         - 100
         - 105
         - 106
         - 121
         - 122
-        - 123
         - 124
         - 125
         - 126
@@ -73,7 +81,6 @@ components:
         - 131
         - 132
         - 133
-        - 134
         - 135
         - 136
         - 137
@@ -82,13 +89,6 @@ components:
         - 140
         - 141
         - 142
-      Battery_Active_Power-from_to:
-        display_name: Battery_Active_Power-from_to
-        description: Cambio de estado de Battery_Active_Power
-        type: from_to
-        unit: event-change
-        labels: []
-        encodes: []
   GE_Gas_Engine:
     name: GE (Motor de Gas)
     description: ''
@@ -100,20 +100,33 @@ components:
         unit: event
         labels:
         - Q10
-        - Q10_to_Q50
         - Q50
+        - Q90
+        - Q95
+        - Q20
+        - Q05
+        encodes:
+        - 2
+        - 4
+        - 7
+        - 10
+        - 102
+        - 107
+      GE_Active_Power-from_to:
+        display_name: GE_Active_Power-from_to
+        description: Cambio de estado de GE_Active_Power
+        type: from_to
+        unit: event-change
+        labels:
+        - Q10_to_Q50
         - Q50_to_Q10
         - Q50_to_Q90
-        - Q90
         - Q90_to_Q50
         - Q90_to_Q95
-        - Q95
         - Q95_to_Q90
         - Q95_to_Q50
         - Q10_to_Q20
-        - Q20
         - Q20_to_Q10
-        - Q05
         - Q05_to_Q10
         - Q05_to_Q50
         - Q05_to_Q95
@@ -134,21 +147,15 @@ components:
         - Q90_to_Q05
         - Q10_to_Q95
         encodes:
-        - 2
         - 3
-        - 4
         - 5
         - 6
-        - 7
         - 8
         - 9
-        - 10
         - 11
         - 87
         - 101
-        - 102
         - 103
-        - 107
         - 108
         - 109
         - 110
@@ -168,13 +175,6 @@ components:
         - 151
         - 152
         - 153
-      GE_Active_Power-from_to:
-        display_name: GE_Active_Power-from_to
-        description: Cambio de estado de GE_Active_Power
-        type: from_to
-        unit: event-change
-        labels: []
-        encodes: []
   MG_Bus:
     name: MG-LV-MSB (Bus Principal de Baja Tensión)
     description: ''
@@ -186,24 +186,37 @@ components:
         unit: event
         labels:
         - Q05
+        - Q10
+        - Q20
+        - Q50
+        - Q90
+        - Q95
+        encodes:
+        - 12
+        - 16
+        - 20
+        - 24
+        - 28
+        - 30
+      MG-LV-MSB_AC_Voltage-from_to:
+        display_name: MG-LV-MSB_AC_Voltage-from_to
+        description: Cambio de estado de MG-LV-MSB_AC_Voltage
+        type: from_to
+        unit: event-change
+        labels:
         - Q05_to_Q10
         - Q05_to_Q20
         - Q05_to_Q50
-        - Q10
         - Q10_to_Q05
         - Q10_to_Q20
         - Q10_to_Q50
-        - Q20
         - Q20_to_Q05
         - Q20_to_Q10
         - Q20_to_Q50
-        - Q50
         - Q50_to_Q10
         - Q50_to_Q20
         - Q50_to_Q90
-        - Q90
         - Q90_to_Q95
-        - Q95
         - Q95_to_Q50
         - Q05_to_Q95
         - Q20_to_Q90
@@ -216,25 +229,19 @@ components:
         - Q95_to_Q90
         - Q90_to_Q20
         encodes:
-        - 12
         - 13
         - 14
         - 15
-        - 16
         - 17
         - 18
         - 19
-        - 20
         - 21
         - 22
         - 23
-        - 24
         - 25
         - 26
         - 27
-        - 28
         - 29
-        - 30
         - 31
         - 88
         - 89
@@ -246,13 +253,6 @@ components:
         - 119
         - 120
         - 148
-      MG-LV-MSB_AC_Voltage-from_to:
-        display_name: MG-LV-MSB_AC_Voltage-from_to
-        description: Cambio de estado de MG-LV-MSB_AC_Voltage
-        type: from_to
-        unit: event-change
-        labels: []
-        encodes: []
       MG-LV-MSB_Frequency-raw:
         display_name: MG-LV-MSB_Frequency-raw
         description: Evento de estado de MG-LV-MSB_Frequency
@@ -260,45 +260,45 @@ components:
         unit: event
         labels:
         - Q05
-        - Q05_to_Q20
-        - Q05_to_Q50
         - Q20
-        - Q20_to_Q05
-        - Q20_to_Q50
-        - Q20_to_Q95
         - Q50
-        - Q50_to_Q05
-        - Q50_to_Q20
-        - Q50_to_Q95
         - Q95
-        - Q95_to_Q20
-        - Q95_to_Q50
-        - Q05_to_Q95
-        - Q95_to_Q05
         encodes:
         - 32
-        - 33
-        - 34
         - 35
-        - 36
-        - 37
-        - 38
         - 39
-        - 40
-        - 41
-        - 42
         - 43
-        - 44
-        - 45
-        - 93
-        - 94
       MG-LV-MSB_Frequency-from_to:
         display_name: MG-LV-MSB_Frequency-from_to
         description: Cambio de estado de MG-LV-MSB_Frequency
         type: from_to
         unit: event-change
-        labels: []
-        encodes: []
+        labels:
+        - Q05_to_Q20
+        - Q05_to_Q50
+        - Q20_to_Q05
+        - Q20_to_Q50
+        - Q20_to_Q95
+        - Q50_to_Q05
+        - Q50_to_Q20
+        - Q50_to_Q95
+        - Q95_to_Q20
+        - Q95_to_Q50
+        - Q05_to_Q95
+        - Q95_to_Q05
+        encodes:
+        - 33
+        - 34
+        - 36
+        - 37
+        - 38
+        - 40
+        - 41
+        - 42
+        - 44
+        - 45
+        - 93
+        - 94
   PVPCS_Photovoltaic:
     name: PVPCS (Generación Fotovoltaica)
     description: ''
@@ -310,41 +310,41 @@ components:
         unit: event
         labels:
         - Q05
-        - Q05_to_Q50
         - Q50
-        - Q50_to_Q05
-        - Q50_to_Q90
-        - Q50_to_Q95
         - Q90
-        - Q90_to_Q50
-        - Q90_to_Q95
         - Q95
-        - Q95_to_Q50
-        - Q95_to_Q90
-        - Q90_to_Q05
-        - Q95_to_Q05
         encodes:
         - 46
-        - 47
         - 48
-        - 49
-        - 50
-        - 51
         - 52
-        - 53
-        - 54
         - 55
-        - 56
-        - 57
-        - 95
-        - 96
       PVPCS_Active_Power-from_to:
         display_name: PVPCS_Active_Power-from_to
         description: Cambio de estado de PVPCS_Active_Power
         type: from_to
         unit: event-change
-        labels: []
-        encodes: []
+        labels:
+        - Q05_to_Q50
+        - Q50_to_Q05
+        - Q50_to_Q90
+        - Q50_to_Q95
+        - Q90_to_Q50
+        - Q90_to_Q95
+        - Q95_to_Q50
+        - Q95_to_Q90
+        - Q90_to_Q05
+        - Q95_to_Q05
+        encodes:
+        - 47
+        - 49
+        - 50
+        - 51
+        - 53
+        - 54
+        - 56
+        - 57
+        - 95
+        - 96
   Receiving_Point:
     name: Receiving Point (Punto de Acoplamiento Común)
     description: ''
@@ -356,58 +356,58 @@ components:
         unit: event
         labels:
         - Q05
+        - Q10
+        - Q20
+        - Q50
+        - Q95
+        encodes:
+        - 58
+        - 62
+        - 66
+        - 71
+        - 76
+      Receiving_Point_AC_Voltage-from_to:
+        display_name: Receiving_Point_AC_Voltage-from_to
+        description: Cambio de estado de Receiving_Point_AC_Voltage
+        type: from_to
+        unit: event-change
+        labels:
         - Q05_to_Q10
         - Q05_to_Q20
         - Q05_to_Q50
-        - Q10
         - Q10_to_Q05
         - Q10_to_Q20
         - Q10_to_Q50
-        - Q20
         - Q20_to_Q05
         - Q20_to_Q10
         - Q20_to_Q50
         - Q20_to_Q95
-        - Q50
         - Q50_to_Q05
         - Q50_to_Q10
         - Q50_to_Q20
         - Q50_to_Q95
-        - Q95
         - Q95_to_Q20
         - Q95_to_Q50
         - Q10_to_Q95
         - Q95_to_Q10
         - Q95_to_Q05
         encodes:
-        - 58
         - 59
         - 60
         - 61
-        - 62
         - 63
         - 64
         - 65
-        - 66
         - 67
         - 68
         - 69
         - 70
-        - 71
         - 72
         - 73
         - 74
         - 75
-        - 76
         - 77
         - 78
         - 97
         - 104
         - 154
-      Receiving_Point_AC_Voltage-from_to:
-        display_name: Receiving_Point_AC_Voltage-from_to
-        description: Cambio de estado de Receiving_Point_AC_Voltage
-        type: from_to
-        unit: event-change
-        labels: []
-        encodes: []

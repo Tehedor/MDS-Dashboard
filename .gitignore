@@ -27,3 +27,5 @@ debug/*.txt
 
 
 !.gitkeep
+
+*.tar.gz

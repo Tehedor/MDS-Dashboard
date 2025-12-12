@@ -5,6 +5,7 @@ import yaml
 
 from utils.dataset.SubDataset import SubDataset
 from utils.dataset.DatasetComposite import DatasetComposite
+from debug.debug import save_debug_info
 
 
 class DatasetRegistry:
@@ -35,6 +36,7 @@ class DatasetRegistry:
         # Cargar composites
         # ---------------------------------------------------------
         self.datasets = self._load_datasets()
+
 
     # ======================================================================
     #   CARGA SUBDATASETS

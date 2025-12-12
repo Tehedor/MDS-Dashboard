@@ -44,11 +44,6 @@ class DatasetComposite:
 
         df = self._build_combined_df()
 
-        save_debug_info(
-            content_source=df.head(10),
-            filename=f"composite_{name}_head",
-            head=f"HEADER DE DF compuesto '{name}' (primeras 100 filas)"
-        )
 
         # Asegurar columna Timestamp
         if not isinstance(df.index, pd.DatetimeIndex):
@@ -98,6 +93,12 @@ class DatasetComposite:
         if "Timestamp" in df.columns:
             df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
             df.index = df["Timestamp"]
+
+        save_debug_info(
+            content_source=df.head(300),
+            filename=f"Composite_{self.name}_HEAD",
+            head=f"➡ HEAD del parquet compuesto '{self.name}' (lazy load)"
+        )
 
         return df
 

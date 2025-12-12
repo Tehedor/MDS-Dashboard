@@ -10,9 +10,8 @@ from layouts.visuals.graph_style import get_graph_layout
 
 log = logging.getLogger("grafico_temporal")
 
-
 # =====================================================================
-# 🔄 ACTUALIZAR GRÁFICO — AHORA CON EVENT_DICTIONARY DINÁMICO y GC
+# 🔄 ACTUALIZAR GRÁFICO — fully compatible with new blank mode
 # =====================================================================
 def actualizar_grafico(
     columnas_seleccionadas,
@@ -22,21 +21,18 @@ def actualizar_grafico(
     format_label_with_unit,
     columnas_info,
     slider_data,
-    event_dictionary=None,   # argumento opcional (app.py lo pasará)
-    default_n_shown_samples=1000,  # reducir por defecto para memoria
+    event_dictionary=None,
+    default_n_shown_samples=1000,
 ):
 
-    # Primer GC por si quedan cosas
     gc.collect()
-
-    # Asegurarnos de que no rompa si app.py aún no pasa el diccionario
     if event_dictionary is None:
         event_dictionary = {}
 
     if not columnas_seleccionadas:
-        return go.Figure().update_layout(title="Selecciona al menos una serie.")
+        return go.Figure()
 
-    # ===== SLIDER RANGE =====
+    # Slider range
     if slider_data:
         slider_min = pd.to_datetime(slider_data["min"])
         slider_max = pd.to_datetime(slider_data["max"])
@@ -46,7 +42,7 @@ def actualizar_grafico(
 
     full_x = df_plot[x_timer].values
 
-    # ===== ZOOM / PAN =====
+    # Zoom
     x_min, x_max = None, None
     if relayout_data:
         if "xaxis.range[0]" in relayout_data:
@@ -60,6 +56,7 @@ def actualizar_grafico(
         if relayout_data.get("xaxis.autorange") is True:
             x_min = x_max = None
 
+    # If no zoom
     if x_min is None or x_max is None:
         idx_start = 0
         idx_end = len(full_x)
@@ -67,14 +64,13 @@ def actualizar_grafico(
     else:
         tmin = pd.to_datetime(x_min).to_datetime64()
         tmax = pd.to_datetime(x_max).to_datetime64()
-        idx_start = max(0, np.searchsorted(full_x, tmin))
-        idx_end = min(len(full_x), np.searchsorted(full_x, tmax))
+        idx_start = np.searchsorted(full_x, tmin)
+        idx_end = np.searchsorted(full_x, tmax)
         view_min, view_max = x_min, x_max
 
     x_view = full_x[idx_start:idx_end]
 
-    # ===== FIGURE RESAMPLER =====
-    # GC justo antes de crear estructuras pesadas
+    # Figure Resampler
     gc.collect()
     fig = FigureResampler(
         go.Figure(),
@@ -86,10 +82,9 @@ def actualizar_grafico(
     anomalous_ts, null_ts, fromto_points = [], [], []
 
     # =====================================================================
-    # 🔍 RECORRER SERIES
+    # SERIES LOOP
     # =====================================================================
     for col in columnas_seleccionadas:
-
         col_name = col.split("::")[-1]
         if col_name not in df_plot.columns:
             continue
@@ -97,86 +92,76 @@ def actualizar_grafico(
         y_full = df_plot[col_name].values
         y = y_full[idx_start:idx_end]
 
-        # ============================
-        # 🔵 EVENTOS (FROM_TO)
-        # ============================
+        # Eventos FROM_TO
         if col_name.endswith("-from_to"):
+            base_clean = col_name.replace("-from_to", "")
+            base_clean = "_".join([p for p in base_clean.split("_") if not p.startswith("Q")])
 
-            clean = col_name.replace("-from_to", "")
-            parts = clean.split("_")
-            parts = [p for p in parts if not p.startswith("Q")]
-            col_base = "_".join(parts)
-
-            if col_base in df_plot.columns:
-                y_base = df_plot[col_base].values[idx_start:idx_end]
+            if base_clean in df_plot.columns:
+                y_base = df_plot[base_clean].values[idx_start:idx_end]
             else:
                 y_base = np.zeros_like(y)
 
-            # Procesar cada punto
             for i, v in enumerate(y):
                 if pd.isna(v) or v in (-999999, 999999):
                     continue
-
                 try:
                     code = int(v)
                 except:
                     code = None
-
                 event_name = event_dictionary.get(code, "Evento desconocido")
+                fromto_points.append((x_view[i], y_base[i], event_name, code))
+            continue
 
-                fromto_points.append(
-                    (x_view[i], y_base[i], event_name, code)
-                )
+        # Normal series
+        anomal = (y == -999999)
+        nulls = (y == 999999)
+        valid = ~(anomal | nulls)
 
-            continue  # Los eventos no se dibujan como línea
+        if np.any(anomal):
+            anomalous_ts.extend(x_view[anomal])
+        if np.any(nulls):
+            null_ts.extend(x_view[nulls])
 
-        # ============================
-        # 📈 SERIES NORMALES
-        # ============================
-        is_anomaly = (y == -999999)
-        is_null = (y == 999999)
-        is_valid = ~(is_anomaly | is_null)
-
-        if np.any(is_anomaly):
-            anomalous_ts.extend(x_view[is_anomaly])
-        if np.any(is_null):
-            null_ts.extend(x_view[is_null])
-
-        if np.any(is_valid):
-            yy = y[is_valid]
-
+        if np.any(valid):
+            yy = y[valid]
             ymin, ymax = yy.min(), yy.max()
             y_min_global = ymin if y_min_global is None else min(y_min_global, ymin)
             y_max_global = ymax if y_max_global is None else max(y_max_global, ymax)
 
             fig.add_trace(
-                go.Scattergl(name=format_label_with_unit(columnas_info, col), line=dict(width=3)),
-                hf_x=x_view[is_valid],
+                go.Scattergl(
+                    name=format_label_with_unit(columnas_info, col),
+                    line=dict(width=3)
+                ),
+                hf_x=x_view[valid],
                 hf_y=yy
             )
 
     # =====================================================================
-    # 🔴 DIBUJO DE PUNTOS ESPECIALES
+    # Puntos especiales
     # =====================================================================
     base_y = (y_min_global - abs(y_min_global) * 0.05) if y_min_global is not None else 0
 
-    # ANÓMALOS
+    # anomalous
     if anomalous_ts:
         ts = np.unique(anomalous_ts)
         fig.add_trace(
-            go.Scattergl(mode="markers", marker=dict(color="orange", size=8), name="Anómalo (-999999)"),
+            go.Scattergl(mode="markers", marker=dict(color="orange", size=8),
+                          name="Anómalo (-999999)"),
             hf_x=ts, hf_y=np.full(len(ts), base_y),
         )
 
-    # NULOS
+    # nulls
     if null_ts:
         ts = np.unique(null_ts)
         fig.add_trace(
-            go.Scattergl(mode="markers", marker=dict(color="red", size=8), name="Nulo (999999)"),
+            go.Scattergl(mode="markers", marker=dict(color="red", size=8),
+                          name="Nulo (999999)"),
             hf_x=ts, hf_y=np.full(len(ts), base_y),
         )
 
-    # EVENTOS FROM_TO
+    # eventos from_to
     if fromto_points:
         xs = [p[0] for p in fromto_points]
         ys = [p[1] for p in fromto_points]
@@ -189,15 +174,14 @@ def actualizar_grafico(
                 name="Eventos",
                 customdata=cdata,
                 hovertemplate="<b>Evento:</b> %{customdata[0]}<br>"
-                              "<b>Código:</b> %{customdata[1]}<br>"
-                              "<extra></extra>"
+                              "<b>Código:</b> %{customdata[1]}<br><extra></extra>"
             ),
             hf_x=xs,
             hf_y=ys,
         )
 
     # =====================================================================
-    # 🧩 LAYOUT FINAL
+    # LAYOUT FINAL
     # =====================================================================
     fig.update_layout(get_graph_layout(view_min, view_max, slider_min, slider_max))
     fig.update_xaxes(
@@ -206,6 +190,5 @@ def actualizar_grafico(
         rangeslider=dict(visible=True, range=[slider_min, slider_max])
     )
 
-    # Liberar posibles referencias temporales
     gc.collect()
     return fig
