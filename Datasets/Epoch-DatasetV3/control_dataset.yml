@@ -1,0 +1,17 @@
+# /Datasets/Epoch-Dataset/control_dataset.yml
+metadata:
+  version: "1.0"
+  dataset: "MDS Microgrid Dataset"
+  description: "Configuración de componentes y medidas de la microgrid"
+  date_created: "2025-11-05"
+  type: EventEncodedDataSet
+  timestamp_col: Timestamp
+  dictionary: "EventDictionary.json"
+  
+
+pipelineCleanData:
+  run_enabled: true
+  available_functions:
+    - assign_timestamp_index: true
+    - expand_event_codes: true
+    # - event_convert_timestamp: true
