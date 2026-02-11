@@ -135,14 +135,30 @@ legend_style_profesional_overtop = dict(
     bgcolor='rgba(255, 255, 255, 0.95)',
     bordercolor='#8893fe',
     borderwidth=3,
-    font=dict(size=12, color='#222222', weight='bold'),
+    font=dict(size=10, color='#222222', weight='bold'),
     orientation="h",
+    itemwidth=30,           # Ancho del símbolo (la línea de color)
+    tracegroupgap=5,        # Espacio vertical entre grupos
     x=0.5,
     y=1.05,
     xanchor="center",
     yanchor="bottom"
 )
 
+legend_style_vertical_list = dict(
+    bgcolor='rgba(255, 255, 255, 0.85)', # Fondo semi-transparente
+    bordercolor='#8893fe',               # Tu color lila de borde
+    borderwidth=1,
+    orientation="v",                     # <--- CLAVE: Vertical (Columna)
+    yanchor="top",
+    y=1,                                 # Alineado arriba
+    xanchor="left",
+    x=1.01,                              # Justo a la derecha del gráfico (fuera)
+    # x=0.01,                            # (Opcional) Usa esto si la quieres DENTRO a la izquierda
+    font=dict(size=11, color='#222'),
+    itemwidth=30,                        # Iconos más pegados
+    tracegroupgap=5                      # Espacio reducido entre items
+)
 
 # 🧠 Diccionario con todos los estilos
 legend_styles_dict = {
@@ -157,4 +173,7 @@ legend_styles_dict = {
     "alert": legend_style_alert,
     "compact": legend_style_compact,
     "profesional_overtop": legend_style_profesional_overtop,
+    "vertical_list": legend_style_vertical_list, # <--- AÑADIR AQUÍ
 }
+
+

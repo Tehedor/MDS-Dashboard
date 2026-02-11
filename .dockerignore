@@ -1,1 +1,25 @@
+# Datos y ejecuciones (YA LOS MONTAS POR VOLUMEN)
 Datasets.tar.gz
+executions/
+epoch_processed/
+Datasets/
+MLOPS_Simulado/
+
+# Basura de Python y Sistema
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Archivos de gestión local
+zgestion_files/requirements2.txt
+push_docker_image.sh
+Makefile
+pruebas1.md

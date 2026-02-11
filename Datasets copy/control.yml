@@ -1,0 +1,30 @@
+version: '1.0'
+description: Control maestro de los datasets del sistema
+
+subdatasets:
+  MDS-Dataset-v003:
+    type: tabular
+    path: /home/tehe/Work/tfm/MLOps4OFP-APSE/executions/01_explore/v003/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  Epoch-Dataset-v013:
+    type: event-encoded
+    path: /home/tehe/Work/tfm/MLOps4OFP-APSE/executions/02_prepareeventsds/v013/02_prepareeventsds_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+    merge_on: segs
+    strategy: sparse-columns
+
+Datasets:
+  MDS-Complete-v003:
+    subdatasets:
+      main: MDS-Dataset-v003
+      epoch: null
+
+  MDS-Complete-v013:
+    subdatasets:
+      main: MDS-Dataset-v003
+      epoch: Epoch-Dataset-v013
+
+default_dataset: MDS-Complete-v003

@@ -7,11 +7,15 @@ services:
     volumes:
       - ./Datasets:/app/Datasets
       - ./debug:/app/debug
+    environment:
+      - DASH_DEBUG_MODE=True
+      - EpochDataset=/
+      - TimeDataset=/app
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 6G
           cpus: '2.0'
         reservations:
-          memory: 3G
+          memory: 2G
     restart: unless-stopped

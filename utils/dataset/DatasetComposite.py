@@ -2,203 +2,169 @@
 import logging
 import pandas as pd
 
-from debug.debug import save_debug_info
-
+from config_env import settings_env
 
 class DatasetComposite:
+    """
+    DatasetComposite
+    =================
+    Representa un Dataset lógico seleccionable en la app.
+
+    Responsabilidades:
+      - Resolver SubDatasets
+      - Cargar tabular (main)
+      - Procesar y cargar Epoch si existe
+      - Mergear en RAM
+      - Devolver df listo para visualización
+
+    ❌ NO escribe a disco
+    ❌ NO cachea
+    """
 
     def __init__(self, name, registry, subdatasets):
         self.name = name
         self.registry = registry
         self.subdatasets_cfg = subdatasets
 
-        logging.info(f"🧩 Iniciando DatasetComposite '{name}'")
-
-        # carpeta de salida
-        self.composed_dir = registry.root / ".processed-composed"
-        self.composed_dir.mkdir(exist_ok=True)
-        self.composed_parquet = self.composed_dir / f"{name}.parquet"
-
-        # reconstrucción de referencias
-        main_name = subdatasets["main"]
-        self.main = registry.subdatasets[main_name]
-
-        self.secondary = {}
-        for key, sd_name in subdatasets.items():
-            if key == "main" or sd_name is None:
-                continue
-            if sd_name in registry.subdatasets:
-                self.secondary[key] = registry.subdatasets[sd_name]
-
-        # ---------------------------------------------------------
-        # Si ya existe parquet compuesto → NO cargamos df
-        # ---------------------------------------------------------
-        if self.composed_parquet.exists():
-            logging.info(f"🧩 Parquet compuesto ya existe: {self.composed_parquet}")
-            return
-
-        # ---------------------------------------------------------
-        # Construcción desde cero (solo generamos parquet)
-        # ---------------------------------------------------------
-        logging.info(f"🧩 Construyendo composite '{name}' desde cero…")
-
-        df = self._build_combined_df()
-
-
-        # Asegurar columna Timestamp
-        if not isinstance(df.index, pd.DatetimeIndex):
-            try:
-                df.index = pd.to_datetime(df.index)
-            except:
-                pass
-
-        df["Timestamp"] = df.index
-
-        # Guardar parquet sin índice
-        df.to_parquet(self.composed_parquet, index=False)
-
-        # No conservar df en memoria
-        del df
-
-        logging.info(f"🧩 Parquet compuesto guardado: {self.composed_parquet}")
-
-    # ==================================================================
-    # MERGE DE SUBDATASETS
-    # ==================================================================
-    def _build_combined_df(self):
-        df = self.main.load_df()
-
-        for key, sd in self.secondary.items():
-            logging.info(f"🧩 Mergeando '{key}' (type={sd.type})")
-
-            sdf = sd.load_df()
-
-            df = df.merge(
-                sdf,
-                left_index=True,
-                right_index=True,
-                how="left",
-                suffixes=("", f"_{key}")
+        # ------------------------------
+        # Resolver subdatasets
+        # ------------------------------
+        main_name = subdatasets.get("main")
+        if main_name is None:
+            raise RuntimeError(
+                f"Dataset '{name}' no define subdataset 'main'"
             )
 
-        return df
+        self.main = registry.subdatasets.get(main_name)
+        if self.main is None:
+            raise RuntimeError(
+                f"Dataset '{name}': subdataset main '{main_name}' no existe"
+            )
 
-    # ==================================================================
-    # LAZY LOADING DEL PARQUET COMPUESTO
-    # ==================================================================
-    def _load_df_lazy(self):
-        """Carga el df del parquet solo cuando la app lo necesita."""
-        df = pd.read_parquet(self.composed_parquet)
+        self.epoch = None
+        epoch_name = subdatasets.get("epoch")
+        if epoch_name:
+            self.epoch = registry.subdatasets.get(epoch_name)
+            if self.epoch is None:
+                raise RuntimeError(
+                    f"Dataset '{name}': subdataset epoch '{epoch_name}' no existe"
+                )
 
-        if "Timestamp" in df.columns:
-            df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
-            df.index = df["Timestamp"]
-
-        save_debug_info(
-            content_source=df.head(300),
-            filename=f"Composite_{self.name}_HEAD",
-            head=f"➡ HEAD del parquet compuesto '{self.name}' (lazy load)"
+        logging.info(
+            f"🧩 DatasetComposite '{self.name}' "
+            f"(main={main_name}, epoch={epoch_name})"
         )
 
-        return df
-
-    # ==================================================================
-    # INFO
-    # ==================================================================
-    def info(self):
-        df = self._load_df_lazy()
-        return {
-            "name": self.name,
-            "rows": len(df),
-            "cols": list(df.columns),
-            "num_columns": len(df.columns),
-        }
-
-    # ==================================================================
-    # METADATOS PARA DASH
-    # ==================================================================
-    def get_all_columns(self):
+    # --------------------------------------------------
+    # API PRINCIPAL
+    # --------------------------------------------------
+    def load_for_visualization(self) -> pd.DataFrame:
         """
-        Usa self.main.componentes + `ctl_components.yml` de eventos.
-        No necesita df cargado en memoria.
+        Carga y devuelve el DataFrame listo para visualización.
+
+        Flujo:
+          1. Cargar tabular (main)
+          2. Si hay epoch:
+               - cargar o procesar epoch
+               - merge LEFT en RAM usando segs
+          3. Devolver df final
         """
 
-        # cargar df solo para ver columnas
-        df = self._load_df_lazy()
-        df_cols = list(df.columns)
+        # ------------------------------
+        # 1. TABULAR
+        # ------------------------------
+        # df_main = self.main.load_df()
 
-        # componentes tabulares
-        tabular_cols = []
-        main_meta = self.main.componentes["components"]
+        # if self.epoch is None:
+        #     return df_main
+        
 
-        for cid, cdata in main_meta.items():
-            for meas_key, meas_info in cdata["measurements"].items():
-                display = meas_info.get("display_name", meas_key)
-                if display in df_cols:
-                    tabular_cols.append({
-                        "name": display, "type": "tabular", "component": cid
-                    })
 
-        # localizar dataset de eventos
-        event_sd = None
-        for sd in self.secondary.values():
-            if sd.type.lower() == "eventencodeddataset":
-                event_sd = sd
-                break
+        # 1. TABULAR
+        df_main = self.main.load_df()
 
-        if event_sd is None:
-            return {
-                "tabular": tabular_cols,
-                "event_raw": [],
-                "event_from_to": [],
-                "all": tabular_cols,
-                "by_component": {},
-                "components_meta": main_meta,
-                "component_display_map": {cid: cdata["name"] for cid, cdata in main_meta.items()},
-            }
+        if not settings_env.EPOCH_MODE:
+            # 2. EPOCH → procesar y guardar (sin merge)
+            if self.epoch is not None:
+                logging.info(
+                    f"🧩 Dataset '{self.name}': procesando Epoch '{self.epoch.name}' (sin merge)"
+                )
+                self.epoch.load_or_process_epoch()
 
-        yaml_components = event_sd.componentes["components"]
+            # 3. DEVOLVER SOLO TABULAR
+            return df_main
 
-        event_raw = []
-        event_from_to = []
-        by_component = {}
 
-        for cid, comp_data in yaml_components.items():
+        # # ❌ NO mergear epoch aquí todavía
+        # logging.info(
+        #     f"🧩 Dataset '{self.name}': Epoch disponible pero no mergeado"
+        # )
+        # return df_main
 
-            for meas_key, meas_info in comp_data["measurements"].items():
-                display = meas_info["display_name"]
-                mtype = meas_info["type"]
-                encodes = meas_info["encodes"]
-                labels = meas_info["labels"]
 
-                base_item = {
-                    "name": display,
-                    "component": cid,
-                    "labels": labels,
-                    "codes": encodes,
-                }
 
-                if mtype == "event":
-                    event_raw.append({**base_item, "type": "raw"})
-                elif mtype == "from_to":
-                    event_from_to.append({**base_item, "type": "from_to"})
+        ts_col = self.main.timestamp_col
+        if ts_col not in df_main.columns:
+            raise RuntimeError(
+                f"Dataset '{self.name}': columna temporal '{ts_col}' no existe"
+            )
 
-                by_component.setdefault(cid, []).append(base_item)
+        # --------------------------------------------------
+        # 🔥 NORMALIZACIÓN CLAVE DEL EJE TEMPORAL
+        # --------------------------------------------------
+        if not pd.api.types.is_datetime64_any_dtype(df_main[ts_col]):
+            log_msg = f"⏱ Convirtiendo eje temporal '{ts_col}' desde epoch segundos"
+            logging.info(log_msg)
 
-        components_meta = dict(main_meta)
-        for cid in yaml_components:
-            components_meta.setdefault(cid, yaml_components[cid])
+            df_main[ts_col] = pd.to_datetime(
+                df_main[ts_col],
+                unit="s",
+                errors="coerce"
+            )
 
-        component_display_map = {
-            cid: cdata.get("name", cid) for cid, cdata in components_meta.items()
-        }
+        # ordenar por tiempo
+        df_main = df_main.sort_values(ts_col)
 
-        return {
-            "tabular": tabular_cols,
-            "event_raw": event_raw,
-            "event_from_to": event_from_to,
-            "all": tabular_cols + event_raw + event_from_to,
-            "by_component": by_component,
-            "components_meta": components_meta,
-            "component_display_map": component_display_map,
-        }
+        # Asegurar orden temporal
+        df_main = df_main.sort_values(self.main.timestamp_col)
+
+        # ------------------------------
+        # 2. EPOCH (opcional)
+        # ------------------------------
+        if self.epoch is None:
+            logging.info(
+                f"🧩 Dataset '{self.name}': sin Epoch → usando solo tabular"
+            )
+            return df_main
+
+        logging.info(
+            f"🧩 Dataset '{self.name}': cargando Epoch '{self.epoch.name}'"
+        )
+
+        df_epoch = self.epoch.load_or_process_epoch()
+
+        if self.epoch.merge_on not in df_epoch.columns:
+            raise RuntimeError(
+                f"Dataset '{self.name}': "
+                f"Epoch no contiene columna '{self.epoch.merge_on}'"
+            )
+
+        # ------------------------------
+        # 3. MERGE EN RAM
+        # ------------------------------
+        df_merged = df_main.merge(
+            df_epoch,
+            how="left",
+            left_on=self.main.timestamp_col,
+            right_on=self.epoch.merge_on,
+            suffixes=("", "_epoch")
+        )
+
+        logging.info(
+            f"🧩 Dataset '{self.name}': "
+            f"merge completado → filas={len(df_merged)}"
+        )
+
+        return df_merged
+
+

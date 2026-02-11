@@ -1,308 +1,176 @@
-# =====================================================
-# app.py — versión corregida con modo vacío + mensaje UX
-# =====================================================
-
 import dash
 import logging
-import os
 import gc
 from pathlib import Path
 from dash.dependencies import Input, Output
 from dash import html, dcc
 import pandas as pd
+import plotly.graph_objects as go
+
+from config_env import settings_env 
 
 from utils.dataset.DatasetRegistry import DatasetRegistry
+from generate_control_yml import generate_control_yml
 from utils.cache_config import init_cache, cache_config, limpiar_cache
 from layouts.dashboard_layout import serve_layout
 from callbacks.filtros import registrar_callbacks_filtros
 from callbacks.grafico_temporal import actualizar_grafico
-from utils.helpers import format_label_with_unit, build_checklist_options
-import plotly.graph_objects as go
+from utils.helpers import format_label_with_unit
 
 # -----------------------------------------------------
-# LOGGING
+# CONFIG
 # -----------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 log = logging.getLogger("App")
 
-# -----------------------------------------------------
-# CARGA DATASETS
-# -----------------------------------------------------
-BASE_DATASETS_DIR = Path(__file__).parent / "Datasets"
+try:
+    generate_control_yml()
+except Exception as exc:
+    log.error(f"❌ Error generando control.yml: {exc}")
+    raise
+
+BASE_DATASETS_DIR = Path(settings_env.OUTPUT_CONTROL).parent
 registry = DatasetRegistry(BASE_DATASETS_DIR)
 
 datasets_disponibles = registry.list()
-if not datasets_disponibles:
-    raise RuntimeError("❌ No hay datasets disponibles!")
-
-DEFAULT_DATASET = datasets_disponibles[0]
-log.info(f"🧠 Precargando dataset inicial: {DEFAULT_DATASET}")
-
-ds_default = registry.get(DEFAULT_DATASET)
-
-cols_info_default = ds_default.get_all_columns()
-df_default = ds_default._load_df_lazy()
-
-# =====================================================
-# FIX: Detectar dataset de eventos también en el default
-# =====================================================
-event_dictionary_default = {}
-for sd in ds_default.secondary.values():
-    if sd.type.lower() == "eventencodeddataset":
-        event_dictionary_default = getattr(sd, "event_dictionary", {}) or {}
-        break
+DEFAULT_DATASET = registry.default_dataset
+ds_default = registry.get_default()
+df_default = ds_default.load_for_visualization()
 
 MAPA_DF_preload = {
-    "components_meta": cols_info_default.get("components_meta", {}),
-    "all_columns": cols_info_default.get("all", []),
     "df": df_default,
-    "event_dictionary": event_dictionary_default,
+    "x_timer": ds_default.main.timestamp_col,
+    "ds_obj": ds_default
 }
 
-log.info(f"🧠 Dataset inicial precargado: {len(df_default)} filas, {len(df_default.columns)} columnas")
-log.info(f"🧩 Diccionario de eventos precargado: {len(event_dictionary_default)} códigos")
-
-
-
-log.info("##################################################")
-log.info("##### http://localhost:8050/ #####################")
-log.info("##################################################")
-
-# -----------------------------------------------------
-# DASH + CACHE
-# -----------------------------------------------------
 app = dash.Dash(__name__)
 cache = init_cache(app)
 cache_config(cache)
 server = app.server
 
 MAPA_DF = {}
+MAPA_EVENT_DICT = {}
 
-# =====================================================
+# -----------------------------------------------------
 # LAYOUT
-# =====================================================
-def get_layout():
-    return html.Div([
-        dcc.Store(id="current-config"),
-        dcc.Store(id="current-components"),
-        dcc.Store(id="current-columns"),
-        dcc.Store(id="cached-df"),
-        dcc.Store(id="slider-absolute-range"),
-        dcc.Store(id="initial-figure-store"),
+# -----------------------------------------------------
+app.layout = html.Div([
+    dcc.Store(id="current-config"),
+    dcc.Store(id="current-components"), # Contiene el DICCIONARIO de metadatos
+    dcc.Store(id="current-columns"),    # Contiene la LISTA de columnas para el checklist
+    dcc.Store(id="cached-df"),
+    dcc.Store(id="slider-absolute-range"),
+    dcc.Store(id="initial-figure-store"),
 
-        serve_layout(
-            config={},
-            datasets=datasets_disponibles,
-            opciones_checklist=[],
-            columnas=[],
-            x_timer="Timestamp",
-            default_dataset=DEFAULT_DATASET,
-        ),
-    ])
+    serve_layout(
+        config={},
+        datasets=datasets_disponibles,
+        opciones_checklist=[],
+        columnas=[],
+        x_timer=MAPA_DF_preload["x_timer"],
+        default_dataset=DEFAULT_DATASET,
+    ),
+])
 
-app.layout = get_layout
+# -----------------------------------------------------
+# CALLBACKS
+# -----------------------------------------------------
 
-
-# =====================================================
-# CALLBACK — CARGA DATASET
-# =====================================================
 @app.callback(
-    [
-        Output("current-config", "data"),
-        Output("current-components", "data"),
-        Output("current-columns", "data"),
-        Output("cached-df", "data"),
-        Output("slider-absolute-range", "data"),
-    ],
+    [Output("current-config", "data"), Output("current-components", "data"),
+     Output("current-columns", "data"), Output("cached-df", "data"),
+     Output("slider-absolute-range", "data")],
     Input("dataset-selector", "value")
 )
 def cargar_dataset(dataset_name):
+    global MAPA_DF, MAPA_EVENT_DICT
     log.info(f"➡ Cargando dataset {dataset_name}...")
 
-    # -----------------------------------------------------
-    # ⚡ DEFAULT precargado
-    # -----------------------------------------------------
+    MAPA_DF.clear()
+    MAPA_EVENT_DICT.clear()
+
     if dataset_name == DEFAULT_DATASET:
         df = MAPA_DF_preload["df"]
-        components_meta = MAPA_DF_preload["components_meta"]
-        all_columns = MAPA_DF_preload["all_columns"]
-        event_dictionary = MAPA_DF_preload["event_dictionary"]
+        x_timer = MAPA_DF_preload["x_timer"]
+        ds = MAPA_DF_preload["ds_obj"]
+    else:
+        try: limpiar_cache(cache)
+        except: pass
+        gc.collect()
+        ds = registry.get(dataset_name)
+        df = ds.load_for_visualization()
+        x_timer = ds.main.timestamp_col
 
-        MAPA_DF.clear()
-        MAPA_DF["components_meta"] = components_meta
-        MAPA_DF["event_dictionary"] = event_dictionary
-        MAPA_DF["actual"] = df
-
-        slider_range = {
-            "min": pd.to_datetime(df["Timestamp"].iloc[0]),
-            "max": pd.to_datetime(df["Timestamp"].iloc[-1]),
-        }
-
-        return {}, components_meta, all_columns, "ready", slider_range
-
-    # -----------------------------------------------------
-    # CARGA NORMAL
-    # -----------------------------------------------------
-    try:
-        limpiar_cache(cache)
-    except:
-        pass
-
-    MAPA_DF.clear()
-    gc.collect()
-
-    ds = registry.get(dataset_name)
-    cfg = ds.main.config if hasattr(ds, "main") else {}
-
-    cols_info = ds.get_all_columns()
-    components_meta = cols_info.get("components_meta", {})
-    all_columns = cols_info.get("all", [])
-
-    MAPA_DF["components_meta"] = components_meta
-
-    # event dictionary
-    event_dictionary = {}
-    for sd in ds.secondary.values():
-        if sd.type.lower() == "eventencodeddataset":
-            event_dictionary = getattr(sd, "event_dictionary", {}) or {}
-            break
-
-    MAPA_DF["event_dictionary"] = event_dictionary
-
-    df = ds._load_df_lazy()
     MAPA_DF["actual"] = df
+    MAPA_DF["x_timer"] = x_timer
 
-    if "Timestamp" not in df.columns:
-        df["Timestamp"] = df.index
+    if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch:
+        MAPA_EVENT_DICT.update(ds.epoch.event_dictionary)
 
-    slider_range = {
-        "min": pd.to_datetime(df["Timestamp"].iloc[0]),
-        "max": pd.to_datetime(df["Timestamp"].iloc[-1]),
-    }
+    # Consolidar metadatos
+    components_cfg = ds.main.components.copy() if ds.main.components else {}
+    if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch and ds.epoch.components:
+        for cid, cdata in ds.epoch.components.items():
+            if cid not in components_cfg: components_cfg[cid] = cdata
+            else: components_cfg[cid]["measurements"].update(cdata.get("measurements", {}))
 
-    return cfg, components_meta, all_columns, "ready", slider_range
+    components_meta = {}
+    columns_meta = []
+    for comp_id, comp in components_cfg.items():
+        components_meta[comp_id] = {"name": comp.get("name", comp_id), "measurements": {}}
+        for mname, mdata in comp.get("measurements", {}).items():
+            mtype = mdata.get("type", "tabular")
+            components_meta[comp_id]["measurements"][mname] = {
+                "type": mtype, "unit": mdata.get("unit"), "display_name": mdata.get("display_name", mname)
+            }
+            if mname in df.columns:
+                columns_meta.append({"name": mname, "component": comp_id, "type": mtype})
 
+    slider_range = {"min": df[x_timer].iloc[0], "max": df[x_timer].iloc[-1]}
+    return {}, components_meta, columns_meta, "ready", slider_range
 
-# =====================================================
-# FIGURA INICIAL
-# =====================================================
 @app.callback(
     Output("initial-figure-store", "data"),
-    [
-        Input("current-columns", "data"),
-        Input("cached-df", "data")
-    ],
+    [Input("current-components", "data"), Input("cached-df", "data")],
     prevent_initial_call=True
 )
-def preparar_figura_inicial(cols_all, df_ready):
-    if df_ready != "ready" or not cols_all:
-        return {}
-
+def preparar_figura_inicial(comp_info, df_ready):
+    if df_ready != "ready": return {}
     df = MAPA_DF.get("actual")
-    components_meta = MAPA_DF.get("components_meta", {})
-    event_dictionary = MAPA_DF.get("event_dictionary", {})
-
-    opciones = build_checklist_options(cols_all)
-    if not opciones:
-        return {}
-
-    col_visual = opciones[0]["value"]
-
-    fig = actualizar_grafico(
-        columnas_seleccionadas=[col_visual],
-        relayout_data=None,
-        df_plot=df,
-        x_timer="Timestamp",
-        format_label_with_unit=format_label_with_unit,
-        columnas_info=components_meta,
-        slider_data=None,
-        event_dictionary=event_dictionary
-    )
-
+    xt = MAPA_DF.get("x_timer")
+    num_cols = [c for c in df.columns if c != xt and pd.api.types.is_numeric_dtype(df[c])]
+    if not num_cols: return {}
+    
+    fig = actualizar_grafico([num_cols[0]], None, df, xt, format_label_with_unit, comp_info, None, MAPA_EVENT_DICT)
     return fig.to_plotly_json()
 
-
-# =====================================================
-# GRAFICO PRINCIPAL (CON MODO VACÍO)
-# =====================================================
 @app.callback(
     Output("grafico-temporal", "figure"),
-    [
-        Input("checklist-columnas", "value"),
-        Input("initial-figure-store", "data"),
-        Input("current-columns", "data"),
-        Input("grafico-temporal", "relayoutData"),
-        Input("slider-absolute-range", "data"),
-    ]
+    [Input("checklist-columnas", "value"), 
+     Input("initial-figure-store", "data"),
+     Input("current-components", "data"), # <--- CORRECCIÓN: Usar componentes (Dict), no columnas (List)
+     Input("grafico-temporal", "relayoutData"),
+     Input("slider-absolute-range", "data")]
 )
-def grafico_callback(columnas_sel, fig_inicial, columnas_info, relayout_data, slider_data):
-
+def grafico_callback(sel, fig_ini, comp_info, relayout, slider):
     df = MAPA_DF.get("actual")
-    components_meta = MAPA_DF.get("components_meta", {})
-    event_dictionary = MAPA_DF.get("event_dictionary", {})
+    xt = MAPA_DF.get("x_timer")
+    if df is None or xt is None: return go.Figure()
 
-    if df is None:
-        return go.Figure()
-
-    # -----------------------------------------------------
-    # 🆕 MODO VACÍO — sin columnas seleccionadas
-    # -----------------------------------------------------
-    if not columnas_sel or len(columnas_sel) == 0:
-
-        slider_min = pd.to_datetime(slider_data["min"])
-        slider_max = pd.to_datetime(slider_data["max"])
-
-        # ¿Había zoom?
-        if relayout_data and "xaxis.range[0]" in relayout_data:
-            xmin = pd.to_datetime(relayout_data["xaxis.range[0]"])
-            xmax = pd.to_datetime(relayout_data["xaxis.range[1]"])
-        elif relayout_data and "xaxis.range" in relayout_data:
-            xmin, xmax = relayout_data["xaxis.range"]
-            xmin, xmax = pd.to_datetime(xmin), pd.to_datetime(xmax)
-        else:
-            xmin, xmax = slider_min, slider_max
-
+    if not sel:
+        # Lógica modo vacío
+        xmin = slider["min"] if slider else None
+        xmax = slider["max"] if slider else None
+        if relayout and "xaxis.range[0]" in relayout:
+            xmin, xmax = relayout["xaxis.range[0]"], relayout["xaxis.range[1]"]
         fig = go.Figure()
-        fig.update_layout(
-            xaxis=dict(range=[xmin, xmax]),
-            yaxis=dict(visible=False),
-            showlegend=False,
-            title="",
-            annotations=[
-                dict(
-                    text="No hay columnas seleccionadas",
-                    x=0.5, y=0.5,
-                    xref="paper", yref="paper",
-                    showarrow=False,
-                    font=dict(size=22, color="gray")
-                )
-            ]
-        )
+        fig.update_layout(xaxis=dict(range=[xmin, xmax]), yaxis=dict(visible=False),
+                          annotations=[dict(text="No hay selección", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False, font=dict(size=22))])
         return fig
 
-    # -----------------------------------------------------
-    # NORMAL — columnas seleccionadas
-    # -----------------------------------------------------
-    return actualizar_grafico(
-        columnas_seleccionadas=columnas_sel,
-        relayout_data=relayout_data,
-        df_plot=df,
-        x_timer="Timestamp",
-        format_label_with_unit=format_label_with_unit,
-        columnas_info=components_meta,
-        slider_data=slider_data,
-        event_dictionary=event_dictionary
-    )
+    return actualizar_grafico(sel, relayout, df, xt, format_label_with_unit, comp_info, slider, MAPA_EVENT_DICT)
 
-
-# =====================================================
-# FILTROS
-# =====================================================
 registrar_callbacks_filtros(app)
 
-# =====================================================
-# MAIN
-# =====================================================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8050))
-    app.run(debug=False, port=port)
+    app.run(debug=False, port=settings_env.SERVER_PORT)

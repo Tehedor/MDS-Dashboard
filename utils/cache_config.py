@@ -12,13 +12,21 @@ def init_cache(app):
     return cache
 
 # --- Función para limpiar la caché ---
-def limpiar_cache(cache = None):
+# def limpiar_cache(cache = None):
+#     try:
+#         cache.clear()
+#         logging.info("🧹 Caché limpiada correctamente.")
+#     except Exception as e:
+#         logging.warning(f"No se pudo limpiar la caché: {e}")
+def limpiar_cache(cache=None):
+    if cache is None:
+        logging.info("🧹 Caché no inicializada; se omite limpieza.")
+        return
     try:
         cache.clear()
         logging.info("🧹 Caché limpiada correctamente.")
     except Exception as e:
         logging.warning(f"No se pudo limpiar la caché: {e}")
-
 
 # --- Manejar Ctrl+C o SIGTERM ---
 def handle_exit_signal(signum, frame):

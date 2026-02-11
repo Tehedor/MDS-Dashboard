@@ -29,3 +29,8 @@ debug/*.txt
 !.gitkeep
 
 *.tar.gz
+
+
+.venv
+
+MLOPS_Simulado/*

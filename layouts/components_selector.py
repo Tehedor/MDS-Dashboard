@@ -1,3 +1,4 @@
+# layouts/components_selector.py
 from dash import html, dcc
 
 def componentes_selector(config, opciones_checklist, datasets_disponibles, default_dataset):
@@ -105,16 +106,15 @@ def componentes_selector(config, opciones_checklist, datasets_disponibles, defau
                         options=opciones_checklist or [],
                         value=[],
                         inputStyle={"marginRight": "8px"},
-                        labelStyle={"display": "inline-block", "marginBottom": "6px"},
                         style={
                             "display": "grid",
                             "gridTemplateColumns": "repeat(auto-fit, minmax(300px, 1fr))",
-                            "gap": "5px",
-                            "height": "150px",
+                            "gap": "8px",
+                            "height": "200px",
                             "overflowY": "auto",
                             "padding": "10px",
                         },
-                    ),
+                    )
                 ],
             )
         ]

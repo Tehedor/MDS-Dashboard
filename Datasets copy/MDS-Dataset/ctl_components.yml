@@ -1,0 +1,118 @@
+components:
+  MG_Bus:
+    name: MG-LV-MSB (Bus Principal de Baja Tensión)
+    description: ''
+    measurements:
+      MG-LV-MSB_AC_Voltage:
+        display_name: MG-LV-MSB_AC_Voltage
+        description: Tensión AC del bus principal
+        type: voltaje
+        unit: V
+      MG-LV-MSB_Frequency:
+        display_name: MG-LV-MSB_Frequency
+        description: Frecuencia del bus principal
+        type: frecuencia
+        unit: Hz
+  Battery:
+    name: Batería
+    description: ''
+    measurements:
+      Battery_Active_Power:
+        display_name: Battery_Active_Power
+        description: Potencia activa de la batería
+        type: potencia
+        unit: kW
+      Battery_Active_Power_Set_Response:
+        display_name: Battery_Active_Power_Set_Response
+        description: Respuesta del sistema a cambios de consigna de potencia
+        type: potencia
+        unit: kW
+  GE_Gas_Engine:
+    name: GE (Motor de Gas)
+    description: ''
+    measurements:
+      GE_Active_Power:
+        display_name: GE_Active_Power
+        description: Potencia activa total del motor de gas
+        type: potencia
+        unit: kW
+      GE_Body_Active_Power:
+        display_name: GE_Body_Active_Power
+        description: Potencia activa del cuerpo del motor
+        type: potencia
+        unit: kW
+      GE_Body_Active_Power_Set_Response:
+        display_name: GE_Body_Active_Power_Set_Response
+        description: Respuesta a la consigna de potencia del cuerpo GE
+        type: potencia
+        unit: kW
+  FC_Fuel_Cell:
+    name: FC (Pila de Combustible)
+    description: ''
+    measurements:
+      FC_Active_Power:
+        display_name: FC_Active_Power
+        description: Potencia activa de la pila de combustible
+        type: potencia
+        unit: kW
+      FC_Active_Power_FC_END_Set:
+        display_name: FC_Active_Power_FC_END_Set
+        description: Setpoint de potencia para la pila de combustible
+        type: potencia
+        unit: kW
+      FC_Active_Power_FC_end_Set_Response:
+        display_name: FC_Active_Power_FC_end_Set_Response
+        description: Respuesta al lazo de control de potencia
+        type: potencia
+        unit: kW
+  PVPCS_Photovoltaic:
+    name: PVPCS (Generación Fotovoltaica)
+    description: ''
+    measurements:
+      PVPCS_Active_Power:
+        display_name: PVPCS_Active_Power
+        description: Potencia activa del sistema fotovoltaico
+        type: potencia
+        unit: kW
+  Receiving_Point:
+    name: Receiving Point (Punto de Acoplamiento Común)
+    description: ''
+    measurements:
+      Receiving_Point_AC_Voltage:
+        display_name: Receiving_Point_AC_Voltage
+        description: Tensión AC en el punto de recepción
+        type: voltaje
+        unit: V
+  Thermal_System:
+    name: Sistema Térmico (Chiller)
+    description: ''
+    measurements:
+      Inlet_Temperature_of_Chilled_Water:
+        display_name: Inlet_Temperature_of_Chilled_Water
+        description: Temperatura del agua fría a la entrada
+        type: temperatura
+        unit: °C
+      Outlet_Temperature:
+        display_name: Outlet_Temperature
+        description: Temperatura del agua fría a la salida
+        type: temperatura
+        unit: °C
+  Island_Mode:
+    name: Modo Isla
+    description: ''
+    measurements:
+      Island_mode_MCCB_Active_Power:
+        display_name: Island_mode_MCCB_Active_Power
+        description: Potencia activa en modo isla
+        type: potencia
+        unit: kW
+      Island_mode_MCCB_AC_Voltage:
+        display_name: Island_mode_MCCB_AC_Voltage
+        description: Tensión AC en modo isla
+        type: voltaje
+        unit: V
+      Island_mode_MCCB_Frequency:
+        display_name: Island_mode_MCCB_Frequency
+        description: Frecuencia en modo isla
+        type: frecuencia
+        unit: Hz

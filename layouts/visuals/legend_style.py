@@ -15,6 +15,7 @@ def get_legend_style():
     # legend_style_name = "alert"
     # legend_style_name = "compact"
     legend_style_name = "profesional_overtop"
+    # legend_style_name = "vertical_list" 
 
 
     

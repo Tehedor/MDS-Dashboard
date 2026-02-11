@@ -5,53 +5,84 @@ import yaml
 
 from utils.dataset.SubDataset import SubDataset
 from utils.dataset.DatasetComposite import DatasetComposite
-from debug.debug import save_debug_info
 
 
 class DatasetRegistry:
     """
-    DatasetRegistry:
-      ✓ Carga control.yml general
-      ✓ Crea SubDatasets (los cuales generan parquet si no existe)
-      ✓ Crea DatasetComposite (los cuales generan parquet si no existe)
-      ✓ NO carga DataFrames en memoria.
+    DatasetRegistry
+    ===============
+    Catálogo de datasets definido por control.yml.
+
+    Responsabilidades:
+      - Leer control.yml
+      - Crear SubDatasets
+      - Crear DatasetComposite
+      - Exponer datasets disponibles
+
+    ❌ NO carga parquets
+    ❌ NO procesa datos
+    ❌ NO ejecuta pipelines
     """
 
+    # --------------------------------------------------
+    # INIT
+    # --------------------------------------------------
     def __init__(self, root: Path):
         self.root = Path(root)
-        self.control_general = self.root / "control.yml"
 
-        if not self.control_general.exists():
-            raise RuntimeError(f"No existe control.yml en {self.root}")
+        self.control_path = self.root / "control.yml"
+        if not self.control_path.exists():
+            raise RuntimeError(
+                f"No existe control.yml en {self.control_path}"
+            )
 
-        with open(self.control_general, "r", encoding="utf-8") as f:
+        # ------------------------------
+        # Leer control.yml
+        # ------------------------------
+        with open(self.control_path, "r", encoding="utf-8") as f:
             self.control = yaml.safe_load(f)
 
-        # ---------------------------------------------------------
-        # Cargar SubDatasets (tabular + event-encoded)
-        # ---------------------------------------------------------
+        logging.info("📘 control.yml cargado correctamente")
+
+        # ------------------------------
+        # SubDatasets
+        # ------------------------------
         self.subdatasets = self._load_subdatasets()
 
-        # ---------------------------------------------------------
-        # Cargar composites
-        # ---------------------------------------------------------
+        # ------------------------------
+        # Datasets (Composite)
+        # ------------------------------
         self.datasets = self._load_datasets()
 
+        # ------------------------------
+        # Default
+        # ------------------------------
+        self.default_dataset = self.control.get("default_dataset")
+        if self.default_dataset not in self.datasets:
+            raise RuntimeError(
+                f"default_dataset '{self.default_dataset}' "
+                "no existe en Datasets"
+            )
 
-    # ======================================================================
-    #   CARGA SUBDATASETS
-    # ======================================================================
+        logging.info(
+            f"📦 Dataset por defecto: {self.default_dataset}"
+        )
+
+    # --------------------------------------------------
+    # SUBDATASETS
+    # --------------------------------------------------
     def _load_subdatasets(self):
         out = {}
-        section = self.control.get("subdatasets", {})
 
-        logging.info("📁 Cargando subdatasets declarados en control.yml")
+        section = self.control.get("subdatasets", {})
+        if not section:
+            raise RuntimeError("control.yml no define 'subdatasets'")
+
+        logging.info("📁 Cargando SubDatasets")
 
         for name, cfg in section.items():
+            logging.info(f"   → SubDataset '{name}'")
 
-            logging.info(f"   → SubDataset: {name}")
-
-            # Crea SubDataset → este ejecuta pipeline y genera parquet si no existe.
             out[name] = SubDataset(
                 name=name,
                 root=self.root,
@@ -60,51 +91,48 @@ class DatasetRegistry:
 
         return out
 
-    # ======================================================================
-    #   CARGA DATASETS COMPLETOS
-    # ======================================================================
+    # --------------------------------------------------
+    # DATASETS (COMPOSITE)
+    # --------------------------------------------------
     def _load_datasets(self):
         out = {}
+
         section = self.control.get("Datasets", {})
+        if not section:
+            raise RuntimeError("control.yml no define 'Datasets'")
 
-        logging.info("📦 Cargando Datasets Compuestos (DatasetComposite)")
+        logging.info("📦 Cargando DatasetComposite")
 
-        for ds_name, cfg in section.items():
-            sub_cfg = cfg.get("subdatasets", {})
-
-            main = sub_cfg.get("main")
-            if main is None:
-                raise ValueError(
-                    f"Dataset '{ds_name}' no define subdataset 'main' en control.yml"
+        for name, cfg in section.items():
+            sub_cfg = cfg.get("subdatasets")
+            if not sub_cfg:
+                raise RuntimeError(
+                    f"Dataset '{name}' no define 'subdatasets'"
                 )
 
-            logging.info(f"   → DatasetComposite '{ds_name}' (main = {main})")
-
-            # Crea DatasetComposite (generará parquet si no existe)
-            out[ds_name] = DatasetComposite(
-                name=ds_name,
+            out[name] = DatasetComposite(
+                name=name,
                 registry=self,
                 subdatasets=sub_cfg
             )
 
         return out
 
-    # ======================================================================
-    #   API PÚBLICA
-    # ======================================================================
+    # --------------------------------------------------
+    # API PUBLICA
+    # --------------------------------------------------
     def list(self):
-        """Devuelve lista de nombres de datasets disponibles."""
+        """Lista de nombres de DatasetComposite disponibles."""
         return list(self.datasets.keys())
 
     def get(self, name):
-        """Devuelve un DatasetComposite por nombre."""
+        """Obtiene un DatasetComposite por nombre."""
         if name not in self.datasets:
-            raise KeyError(f"El dataset '{name}' no existe.")
+            raise KeyError(
+                f"Dataset '{name}' no existe"
+            )
         return self.datasets[name]
 
     def get_default(self):
-        """Devuelve dataset por defecto de control.yml."""
-        default = self.control.get("default_dataset")
-        if not default:
-            raise RuntimeError("control.yml no define 'default_dataset'.")
-        return self.get(default)
+        """Obtiene el DatasetComposite por defecto."""
+        return self.get(self.default_dataset)

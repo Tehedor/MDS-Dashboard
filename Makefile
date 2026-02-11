@@ -32,3 +32,14 @@ extract_tar_datasets:
 run:
 	@echo "🚀 Iniciando contenedor Docker..."
 	@docker compose up --build 
+
+
+##################################################################
+##### Test
+##################################################################
+python = .venv/bin/python
+# shell := /bin/bash
+test_control_yml:
+	@$(python) generate_control_yml.py
+	@echo "✅ Archivo test_control.yml generado correctamente"
+

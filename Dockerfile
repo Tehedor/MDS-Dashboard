@@ -1,27 +1,35 @@
-# Dockerfile
+# --- Etapa 1: Constructor ---
+FROM python:3.13.9-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /install
+
+# Copiamos solo los requisitos para aprovechar el cache de capas
+COPY zgestion_files/requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# --- Etapa 2: Imagen Final ---
 FROM python:3.13.9-slim
 
-# Evita que Python genere archivos .pyc y fuerza salida no bufferizada (para ver logs en tiempo real)
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Instalar dependencias
-COPY zgestion_files/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copiamos las librerías ya instaladas del builder
+COPY --from=builder /install /usr/local
 
-# Copiar el código fuente
+# Copiamos el código fuente (el .dockerignore evitará la basura)
 COPY . .
 
-# Exponer el puerto
+# Limpieza radical de restos de desarrollo
+RUN rm -rf Datasets MLOPS_Simulado zgestion_files/requirements* \
+    && find . -name "__pycache__" -type d -exec rm -rf {} +
+
 EXPOSE 8050
 
-# COMANDO DE ARRANQUE (Crucial)
-# Usamos Gunicorn.
-# IMPORTANTE: --workers 1. 
-# Como usas una variable global (MAPA_DF) para guardar datos en memoria, 
-# NO puedes usar múltiples workers (procesos), porque no comparten memoria.
-# Usamos --threads 4 para manejar concurrencia compartiendo la RAM.
-# CMD ["gunicorn", "-b", "0.0.0.0:8050", "app:server", "--workers=1", "--threads=4", "--timeout=120"]
-CMD ["gunicorn", "-b", "0.0.0.0:8050", "app:server", "--workers=1", "--threads=1"]  
+# Uso threads=4 para que Dash no se bloquee con un solo usuario, 
+# pero mantengo workers=1 para no duplicar la RAM.
+CMD ["gunicorn", "-b", "0.0.0.0:8050", "app:server", "--workers=1", "--threads=4", "--timeout=120"]

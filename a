@@ -1,0 +1,210 @@
+.
+├── __pycache__
+│   ├── config_env.cpython-312.pyc
+│   └── generate_control_yml.cpython-312.pyc
+├── a
+├── app.py
+├── 'app copy.py'
+├── assets
+│   └── styles.css
+├── callbacks
+│   ├── __pycache__
+│   │   ├── filtros.cpython-312.pyc
+│   │   └── grafico_temporal.cpython-312.pyc
+│   ├── filtros.py
+│   ├── grafico_temporal.py
+│   ├── 'grafico_temporal copy.py'
+│   └── 'grafico_temporal copy 2.py'
+├── config_env.py
+├── control_dataset.yml
+├── ctl_components_epoch.yml
+├── 'ctl_components_epoch copy.yml'
+├── ctl_components_temporal.yml
+├── 'Datasets copy'
+│   ├── components.yml
+│   ├── control.yml
+│   ├── 'control copy.yml'
+│   ├── Epoch-Dataset
+│   │   ├── control_dataset.yml
+│   │   ├── ctl_components.yml
+│   │   ├── 'ctl_components copy.yml'
+│   │   ├── Events_Dictionary.json
+│   │   ├── info.ipynb
+│   │   ├── processed
+│   │   ├── raw
+│   │   └── waste
+│   │       ├── control_dataset.yml
+│   │       ├── control_groupedDictionary.yml
+│   │       ├── 'control_groupedDictionary copy.yml'
+│   │       └── 'control_groupedDictionary copy 2.yml'
+│   └── MDS-Dataset
+│       ├── control_dataset.yml
+│       ├── ctl_components.yml
+│       ├── processed
+│       └── raw
+├── debug
+│   ├── __pycache__
+│   │   └── debug.cpython-312.pyc
+│   ├── all.json
+│   └── debug.py
+├── docker-compose.yml
+├── Dockerfile
+├── 'Dockerfile copy'
+├── epoch_processed
+│   ├── Epoch-Dataset-v013
+│   │   └── 02_prepareeventsds_dataset.parquet
+│   └── info.ipynb
+├── Events_Dictionary.json
+├── generate_control_yml.py
+├── layouts
+│   ├── __pycache__
+│   │   ├── components_selector.cpython-312.pyc
+│   │   └── dashboard_layout.cpython-312.pyc
+│   ├── components_selector.py
+│   ├── dashboard_layout.py
+│   └── visuals
+│       ├── __pycache__
+│       │   ├── axes_style.cpython-312.pyc
+│       │   ├── graph_style.cpython-312.pyc
+│       │   ├── legend_style.cpython-312.pyc
+│       │   └── slider_style.cpython-312.pyc
+│       ├── axes_style.py
+│       ├── graph_style.py
+│       ├── legend_style.py
+│       ├── slider_style.py
+│       └── styles
+│           ├── __pycache__
+│           │   ├── axes.cpython-312.pyc
+│           │   ├── graphs.cpython-312.pyc
+│           │   ├── legends.cpython-312.pyc
+│           │   └── sliders.cpython-312.pyc
+│           ├── axes.py
+│           ├── graphs.py
+│           ├── legends.py
+│           └── sliders.py
+├── Makefile
+├── MLOPS_Simulado
+│   ├── 02_EventDictionary_notebook.json
+│   ├── control.yml
+│   ├── control_datset.yml
+│   ├── executions
+│   │   ├── 01_explore
+│   │   │   ├── base_params.yaml
+│   │   │   ├── v003
+│   │   │   │   ├── 01_explore_dataset.parquet
+│   │   │   │   ├── 01_explore_metadata.json
+│   │   │   │   ├── 01_explore_params.json
+│   │   │   │   ├── 01_explore_report.html
+│   │   │   │   ├── 01_preclean_report.json
+│   │   │   │   └── params.yaml
+│   │   │   ├── v004
+│   │   │   │   ├── 01_explore_dataset.parquet
+│   │   │   │   ├── 01_explore_metadata.json
+│   │   │   │   ├── 01_explore_params.json
+│   │   │   │   ├── 01_explore_report.html
+│   │   │   │   └── params.yaml
+│   │   │   └── variants.yaml
+│   │   ├── 02_prepareeventsds
+│   │   │   ├── base_params.yaml
+│   │   │   ├── v001
+│   │   │   │   ├── 02_prepareeventsds_bands.json
+│   │   │   │   ├── 02_prepareeventsds_dataset.parquet
+│   │   │   │   ├── 02_prepareeventsds_event_catalog.json
+│   │   │   │   ├── 02_prepareeventsds_metadata.json
+│   │   │   │   ├── 02_prepareeventsds_params.json
+│   │   │   │   ├── 02_prepareeventsds_report.html
+│   │   │   │   └── params.yaml
+│   │   │   ├── v013
+│   │   │   │   ├── 02_prepareeventsds_bands.json
+│   │   │   │   ├── 02_prepareeventsds_dataset.parquet
+│   │   │   │   ├── 02_prepareeventsds_event_catalog.json
+│   │   │   │   ├── 02_prepareeventsds_metadata.json
+│   │   │   │   ├── 02_prepareeventsds_params.json
+│   │   │   │   ├── 02_prepareeventsds_report.html
+│   │   │   │   └── params.yaml
+│   │   │   └── variants.yaml
+│   │   ├── 03_preparewindowsds
+│   │   │   ├── base_params.yaml
+│   │   │   ├── README_dataset.md
+│   │   │   ├── v111
+│   │   │   │   ├── 03_preparewindowsds_report.html
+│   │   │   │   └── params.yaml
+│   │   │   └── variants.yaml
+│   │   └── README.md
+│   └── 'executions copy'
+│       ├── 01_explore
+│       │   ├── base_params.yaml
+│       │   ├── v001
+│       │   │   ├── 01_explore_dataset.parquet.dvc
+│       │   │   ├── 01_explore_metadata.json.dvc
+│       │   │   ├── 01_explore_params.json.dvc
+│       │   │   └── 01_explore_report.html.dvc
+│       │   ├── v002
+│       │   │   ├── 01_explore_dataset.parquet.dvc
+│       │   │   ├── 01_explore_metadata.json.dvc
+│       │   │   ├── 01_explore_params.json.dvc
+│       │   │   ├── 01_explore_report.html.dvc
+│       │   │   ├── 01_preclean_report.json.dvc
+│       │   │   └── params.yaml
+│       │   ├── v003
+│       │   │   ├── 01_explore_dataset.parquet
+│       │   │   ├── 01_explore_metadata.json
+│       │   │   ├── 01_explore_params.json
+│       │   │   ├── 01_explore_report.html
+│       │   │   ├── 01_preclean_report.json
+│       │   │   ├── figures
+│       │   │   └── params.yaml
+│       │   └── variants.yaml
+│       ├── 02_prepareeventsds
+│       │   ├── base_params.yaml
+│       │   ├── v013
+│       │   │   ├── 02_prepareeventsds_bands.json
+│       │   │   ├── 02_prepareeventsds_dataset.parquet
+│       │   │   ├── 02_prepareeventsds_event_catalog.json
+│       │   │   ├── 02_prepareeventsds_metadata.json
+│       │   │   ├── 02_prepareeventsds_params.json
+│       │   │   ├── 02_prepareeventsds_report.html
+│       │   │   ├── figures
+│       │   │   ├── params.yaml
+│       │   │   └── pruebas.ipynb
+│       │   └── variants.yaml
+│       └── 03_preparewindowsds
+│           ├── base_params.yaml
+│           ├── README_dataset.md
+│           ├── v113
+│           │   ├── 03_preparewindowsds_dataset.parquet
+│           │   ├── 03_preparewindowsds_metadata.json
+│           │   ├── figures
+│           │   └── params.yaml
+│           └── variants.yaml
+├── pruebas1.md
+├── push_docker_image.sh
+├── utils
+│   ├── __pycache__
+│   │   ├── cache_config.cpython-312.pyc
+│   │   └── helpers.cpython-312.pyc
+│   ├── cache_config.py
+│   ├── control_yml
+│   │   ├── eventEncoded_groupComponents.py
+│   │   ├── 'eventEncoded_groupComponents copy.py'
+│   │   ├── schema_control.yml
+│   │   └── validate_config.py
+│   ├── data_loader.py
+│   ├── dataset
+│   │   ├── __pycache__
+│   │   │   ├── DatasetComposite.cpython-312.pyc
+│   │   │   ├── DatasetRegistry.cpython-312.pyc
+│   │   │   └── SubDataset.cpython-312.pyc
+│   │   ├── DatasetComposite.py
+│   │   ├── DatasetRegistry.py
+│   │   ├── loader.py
+│   │   ├── processor.py
+│   │   └── SubDataset.py
+│   └── helpers.py
+└── zgestion_files
+    ├── daemon.sh
+    ├── gunicorn.service
+    ├── requirements.txt
+    ├── requirements2.txt
+    ├── restartgunicorn.sh
+    └── server.sh
