@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import yaml
+import json  # Import necesario para leer metadata
 from pathlib import Path
 from config_env import settings_env 
 
@@ -89,31 +90,36 @@ def find_parquet_from_params(
     params_path: Path,
     stage_root: Path,
 ) -> Path | None:
-    """
-    Resuelve el directorio de versión de forma portable:
-    - Ignora rutas absolutas del host
-    - Usa SIEMPRE el stage_root montado en el contenedor
-    """
-
-    # Siempre confiar en el layout del stage_root
     version_dir = stage_root / version
-
     if not version_dir.exists():
         return None
-
     for parquet in version_dir.rglob("*.parquet"):
         return parquet
-
     return None
-
-
 
 def version_key(version: str) -> str:
     return version.replace("v", "")
 
-
-def dependency_key(version: str) -> str:
-    return f"{int(version_key(version)) % 10:03d}"
+def get_epoch_parent_variant(parquet_path: Path) -> str | None:
+    """
+    Lee el archivo 02_prepareeventsds_metadata.json situado junto al parquet
+    para averiguar de qué dataset temporal depende (parent_variant).
+    """
+    # Asumimos que el metadata json está en el mismo directorio que el parquet
+    # o en el directorio de la versión. Buscamos en el directorio del parquet.
+    parent_dir = parquet_path.parent
+    metadata_file = parent_dir / settings_env.CTRL_COMPONENTS_EPOCH_METADATA
+    
+    if not metadata_file.exists():
+        return None
+        
+    try:
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("parent_variant") # Ej: "v003"
+    except Exception as e:
+        print(f"⚠️ Error leyendo metadata en {metadata_file}: {e}")
+        return None
 
 def generate_control_yml() -> Path:
     # ============================================================
@@ -121,8 +127,8 @@ def generate_control_yml() -> Path:
     # ============================================================
 
     subdatasets = {}
-    tabular_versions = {}
-    epoch_versions = {}
+    tabular_versions = {} # map: version_key -> subdataset_name
+    epoch_versions = {}   # map: version_key -> dict {name: subdataset_name, path: Path}
 
     # ---------- TABULAR ----------
     explore_stage_root = EXECUTIONS_ROOT / EXPLORE_STAGE
@@ -166,16 +172,20 @@ def generate_control_yml() -> Path:
             "merge_on": TIMESTAMP_COL,
             "strategy": "sparse-columns",
         }
-        epoch_versions[version_key(v)] = name
+        # Guardamos el path también para buscar el metadata después
+        epoch_versions[version_key(v)] = {
+            "name": name, 
+            "path": parquet
+        }
 
     # ============================================================
-    # 🔗 BUILD FINAL DATASETS (CORRECTO)
+    # 🔗 BUILD FINAL DATASETS
     # ============================================================
 
     datasets = {}
 
+    # 1. Datasets Tabulares Puros (Base)
     for tab_v, tab_name in tabular_versions.items():
-        # Base dataset (no epoch)
         datasets[f"MDS-Complete-v{tab_v}"] = {
             "subdatasets": {
                 "main": tab_name,
@@ -183,23 +193,33 @@ def generate_control_yml() -> Path:
             }
         }
 
-        # All epochs that depend on this tabular
-        if EPOCH_MODE:
-            for epoch_v, epoch_name in epoch_versions.items():
-                # Convertimos ambos a int para que la comparación sea numérica y no de texto
-                try:
-                    dep_id = int(version_key(f"v{epoch_v}")) % 10
-                    tab_id = int(tab_v)
+    # 2. Datasets Combinados (Eventos ligados a su Padre)
+    if EPOCH_MODE:
+        for epoch_v, epoch_info in epoch_versions.items():
+            epoch_name = epoch_info["name"]
+            epoch_path = epoch_info["path"]
+            
+            # Buscamos dependencia explícita en metadata
+            parent_variant_full = get_epoch_parent_variant(epoch_path) # Ej: "v003"
+            
+            if parent_variant_full:
+                parent_key = version_key(parent_variant_full) # "003"
+                
+                # Verificamos si tenemos cargado ese dataset temporal
+                if parent_key in tabular_versions:
+                    tab_name = tabular_versions[parent_key]
                     
-                    if dep_id == tab_id:
-                        datasets[f"MDS-Complete-v{epoch_v}"] = {
-                            "subdatasets": {
-                                "main": tab_name,
-                                "epoch": epoch_name,
-                            }
+                    # Nuevo Naming Convention: ...-Tv{Temporal}_Ev{Events}
+                    combined_name = f"MDS-Complete-Tv{parent_key}_Ev{epoch_v}"
+                    
+                    datasets[combined_name] = {
+                        "subdatasets": {
+                            "main": tab_name,
+                            "epoch": epoch_name,
                         }
-                except ValueError:
-                    continue # Salta si la versión no es numérica
+                    }
+                else:
+                    print(f"⚠️ El dataset de eventos {epoch_name} requiere temporal {parent_variant_full}, pero no se encontró.")
 
     if not subdatasets:
         raise RuntimeError(

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 
-MODE="${MODE:-docker}" # "docker" or "buildx"
-# MODE="${MODE:-buildx}" # "docker" or "buildx"
+# MODE="${MODE:-docker}" # "docker" or "buildx"
+MODE="${MODE:-buildx}" # "docker" or "buildx"
 BUILDER_NAME="mi_builder"
 BUILDKIT_CONTAINER="buildx_buildkit_${BUILDER_NAME}0"
 

@@ -148,7 +148,7 @@ def preparar_figura_inicial(comp_info, df_ready):
     Output("grafico-temporal", "figure"),
     [Input("checklist-columnas", "value"), 
      Input("initial-figure-store", "data"),
-     Input("current-components", "data"), # <--- CORRECCIÓN: Usar componentes (Dict), no columnas (List)
+     Input("current-components", "data"),
      Input("grafico-temporal", "relayoutData"),
      Input("slider-absolute-range", "data")]
 )
@@ -157,15 +157,30 @@ def grafico_callback(sel, fig_ini, comp_info, relayout, slider):
     xt = MAPA_DF.get("x_timer")
     if df is None or xt is None: return go.Figure()
 
-    if not sel:
-        # Lógica modo vacío
-        xmin = slider["min"] if slider else None
-        xmax = slider["max"] if slider else None
-        if relayout and "xaxis.range[0]" in relayout:
+    # Lógica de extracción unificada
+    xmin, xmax = None, None
+    if slider:
+        xmin, xmax = slider["min"], slider["max"]
+
+    # Detectar cambio de rango por usuario (Zoom o Slider)
+    if relayout:
+        if "xaxis.range[0]" in relayout:
             xmin, xmax = relayout["xaxis.range[0]"], relayout["xaxis.range[1]"]
+        elif "xaxis.range" in relayout:
+            xmin, xmax = relayout["xaxis.range"][0], relayout["xaxis.range"][1]
+        elif "xaxis.autorange" in relayout:
+            # Reset al rango completo del slider
+            if slider:
+                xmin, xmax = slider["min"], slider["max"]
+
+    if not sel:
+        # Lógica modo vacío (ahora respeta el movimiento del slider)
         fig = go.Figure()
-        fig.update_layout(xaxis=dict(range=[xmin, xmax]), yaxis=dict(visible=False),
-                          annotations=[dict(text="No hay selección", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False, font=dict(size=22))])
+        fig.update_layout(
+            xaxis=dict(range=[xmin, xmax]), 
+            yaxis=dict(visible=False),
+            annotations=[dict(text="No hay selección", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False, font=dict(size=22))]
+        )
         return fig
 
     return actualizar_grafico(sel, relayout, df, xt, format_label_with_unit, comp_info, slider, MAPA_EVENT_DICT)

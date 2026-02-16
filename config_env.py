@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     EVENTS_STAGE: str = "02_prepareeventsds"
     OUTPUT_CONTROL: str = "MLOPS_Simulado/control.yml"
     # DEFAULT_DATASET: str = "MDS-Complete-v003"
-    DEFAULT_DATASET: str = "MDS-Complete-v013"
+    DEFAULT_DATASET: str = "MDS-Complete-v003"
 
     TIMESTAMP_COL: str = "segs"
     EPOCH_EVENT_COLS: list = ["event", "event_id", "evt", "code", "codigo_evento", "event_code","events"]
@@ -24,8 +24,11 @@ class Settings(BaseSettings):
     EPOCH_PROCESSED_DIR: str = "./epoch_processed"
 
     CTRL_COMPONENTS_TEMPORAL: str = "ctl_components_temporal.yml"
-    CTRL_COMPONENTS_EPOCH_DICTIONARY: str = "Events_Dictionary.json"
+
     CTRL_COMPONENTS_EPOCH: str = "ctl_components_epoch.yml"
+    CTRL_COMPONENTS_EPOCH_DICTIONARY: str = "02_prepareeventsds_event_catalog.json"
+    CTRL_COMPONENTS_EPOCH_METADATA: str = "02_prepareeventsds_metadata.json"
+
 
     # Configuración de carga
     model_config = SettingsConfigDict(

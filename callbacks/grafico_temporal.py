@@ -31,26 +31,42 @@ def actualizar_grafico(
 
     # 1. TIEMPOS Y TU
     full_x = df_plot[x_timer].values.astype("datetime64[ns]")
+    # ... (lógica de tu_ns se mantiene igual) ...
     if len(full_x) > 1:
         tu_ns = np.median(np.diff(full_x[:50].view(np.int64)))
         if tu_ns <= 0: tu_ns = 60 * 1e9
     else: tu_ns = 60 * 1e9
     tu_tolerance_ns = tu_ns * 1.5
 
-    # 2. RANGOS Y VISTA
+    # 2. RANGOS Y VISTA (CORREGIDO)
     slider_min = pd.to_datetime(slider_data["min"]) if slider_data else pd.to_datetime(full_x[0])
     slider_max = pd.to_datetime(slider_data["max"]) if slider_data else pd.to_datetime(full_x[-1])
 
-    x_min = relayout_data.get("xaxis.range[0]") if relayout_data else None
-    x_max = relayout_data.get("xaxis.range[1]") if relayout_data else None
-    
-    if relayout_data and relayout_data.get("xaxis.autorange"): x_min = x_max = None
+    x_min, x_max = None, None
+
+    # Lógica robusta para leer relayout_data
+    if relayout_data:
+        if "xaxis.range[0]" in relayout_data:
+            # Caso: Zoom directo en el gráfico
+            x_min = relayout_data["xaxis.range[0]"]
+            x_max = relayout_data["xaxis.range[1]"]
+        elif "xaxis.range" in relayout_data:
+            # Caso: Movimiento desde el Slider
+            x_min = relayout_data["xaxis.range"][0]
+            x_max = relayout_data["xaxis.range"][1]
+        elif "xaxis.autorange" in relayout_data:
+            # Caso: Doble click para resetear
+            x_min, x_max = None, None
 
     if x_min is None:
         idx_start, idx_end = 0, len(full_x)
         view_min, view_max = slider_min, slider_max
     else:
         view_min, view_max = pd.to_datetime(x_min), pd.to_datetime(x_max)
+        # Aseguramos que view_min/max estén dentro de los límites absolutos para evitar errores de índice
+        if view_min < slider_min: view_min = slider_min
+        if view_max > slider_max: view_max = slider_max
+        
         idx_start = np.searchsorted(full_x, view_min.to_datetime64())
         idx_end = np.searchsorted(full_x, view_max.to_datetime64())
 
@@ -91,16 +107,27 @@ def actualizar_grafico(
         if col_name not in df_plot.columns: continue
         y_raw = df_plot[col_name].values[idx_start:idx_end]
 
+        # --- MODIFICACIÓN AQUÍ ---
         if col_name.endswith("-from_to"):
             base_v = col_name.replace("-from_to", "")
             if base_v in selected_vars:
                 y_base = pd.to_numeric(df_plot[base_v].values[idx_start:idx_end], errors="coerce")
                 y_codes = pd.to_numeric(y_raw, errors="coerce")
+                
                 for i, v in enumerate(y_codes):
                     if not pd.isna(v) and v not in (-999999, 999999):
-                        label = event_dictionary.get(int(v), f"Ev:{int(v)}")
-                        fromto_points.setdefault(base_v, []).append((x_view[i], y_base[i], label, int(v)))
+                        full_label = event_dictionary.get(int(v), f"Ev:{int(v)}")
+                        
+                        # Limpieza: Si la etiqueta empieza con el nombre de la variable, lo quitamos
+                        if full_label.startswith(base_v):
+                            # Quitamos el nombre base y el posible guion bajo inicial
+                            clean_label = full_label[len(base_v):].lstrip("_")
+                        else:
+                            clean_label = full_label
+
+                        fromto_points.setdefault(base_v, []).append((x_view[i], y_base[i], clean_label, int(v)))
             continue
+        # -------------------------
 
         y = pd.to_numeric(y_raw, errors="coerce")
         if np.any(~np.isnan(y)):
