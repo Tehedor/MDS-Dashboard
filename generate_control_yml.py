@@ -228,6 +228,21 @@ def generate_control_yml() -> Path:
         )
 
     # ============================================================
+    # 🎯 VALIDATE DEFAULT DATASET
+    # ============================================================
+    
+    final_default_dataset = DEFAULT_DATASET
+    
+    # Comprobamos si el default existe en la lista de compuestos.
+    if final_default_dataset not in datasets:
+        if datasets:
+            # Cogemos el primero de la lista (normalmente será el temporal v100 si es el primero cargado)
+            final_default_dataset = list(datasets.keys())[0]
+            print(f"[*] DEFAULT_DATASET '{DEFAULT_DATASET}' no está en la lista de conjuntos compuestos. Usando fallback: '{final_default_dataset}'")
+        else:
+            final_default_dataset = None
+
+    # ============================================================
     # 📝 WRITE control.yml
     # ============================================================
 
@@ -236,7 +251,7 @@ def generate_control_yml() -> Path:
         "description": "Control maestro de los datasets del sistema",
         "subdatasets": subdatasets,
         "Datasets": datasets,
-        "default_dataset": DEFAULT_DATASET,
+        "default_dataset": final_default_dataset,
     }
 
     OUTPUT_CONTROL.parent.mkdir(parents=True, exist_ok=True)
