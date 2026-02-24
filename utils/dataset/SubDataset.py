@@ -5,6 +5,7 @@ import yaml
 import pandas as pd
 import numpy as np
 import re
+import os
 
 from config_env import settings_env
 
@@ -30,14 +31,24 @@ class SubDataset:
         self.parquet_path = Path(parquet_path)
 
         # --- ATRIBUTOS RESTAURADOS ---
+# --- ATRIBUTOS RESTAURADOS ---
         self.timestamp_col = cfg.get("timestamp_col", settings_env.TIMESTAMP_COL)
         self.merge_on = cfg.get("merge_on", self.timestamp_col)
         self.strategy = cfg.get("strategy")
         # -----------------------------
 
+        # 🔥 MODIFICADO: Crear carpeta principal y darle permisos totales
+        # 🔥 MODIFICADO: Crear carpeta principal anulando el umask de Docker
         self.epoch_processed_root = Path(settings_env.EPOCH_PROCESSED_DIR)
-        self.epoch_processed_root.mkdir(parents=True, exist_ok=True)
-
+        old_umask = os.umask(0) # Anulamos restricciones de permisos
+        try:
+            self.epoch_processed_root.mkdir(parents=True, exist_ok=True, mode=0o777)
+            os.chmod(str(self.epoch_processed_root), 0o777)
+        except Exception as e:
+            logging.error(f"⚠️ No se pudo dar permisos a la carpeta raíz: {e}")
+        finally:
+            os.umask(old_umask) # Restauramos la seguridad del sistema siempre
+            
         self.components = {}
         self.event_dictionary = {} # Diccionario normalizado code -> label
 
@@ -278,7 +289,16 @@ class SubDataset:
 
     def load_or_process_epoch(self) -> pd.DataFrame:
         out_path = self.epoch_processed_root / self.name / self.parquet_path.name
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 🔥 1. Crear subcarpeta anulando el umask temporalmente
+        old_umask = os.umask(0)
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True, mode=0o777)
+            os.chmod(str(out_path.parent), 0o777)
+        except Exception as e: 
+            logging.error(f"⚠️ Error dando permisos a subcarpeta {out_path.parent}: {e}")
+        finally:
+            os.umask(old_umask)
 
         if out_path.exists(): 
             return pd.read_parquet(out_path)
@@ -286,12 +306,30 @@ class SubDataset:
         logging.info(f"⚙️ Procesando eventos para {self.name}...")
         df_raw = self.load_df()
         
-        if df_raw.empty:
-             return pd.DataFrame()
+        if df_raw.empty: return pd.DataFrame()
 
         df_processed = self._process_epoch_df(df_raw)
 
         if not df_processed.empty:
-            df_processed.to_parquet(out_path, index=False)
+            # 🔥 2. Guardado atómico con permisos forzados
+            tmp_path = out_path.with_suffix('.parquet.tmp')
+            
+            old_umask_file = os.umask(0)
+            try:
+                # Escribir el tmp
+                df_processed.to_parquet(tmp_path, index=False)
+                
+                # Permisos al tmp (666)
+                os.chmod(str(tmp_path), 0o666)
+                
+                # Renombrar (conserva los permisos)
+                os.rename(str(tmp_path), str(out_path))
+                
+                # Por si acaso, re-aplicar permisos al final
+                os.chmod(str(out_path), 0o666)
+            except Exception as e:
+                logging.error(f"⚠️ Error dando permisos al archivo parquet: {e}")
+            finally:
+                os.umask(old_umask_file)
         
         return df_processed

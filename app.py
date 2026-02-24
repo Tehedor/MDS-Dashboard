@@ -1,14 +1,16 @@
+# app.py
 import dash
 import logging
 import gc
 from pathlib import Path
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from dash import html, dcc
 import pandas as pd
 import plotly.graph_objects as go
 
 from config_env import settings_env 
 
+from utils.dataset.DatasetComposite import cancel_background_processing
 from utils.dataset.DatasetRegistry import DatasetRegistry
 from generate_control_yml import generate_control_yml
 from utils.cache_config import init_cache, cache_config, limpiar_cache
@@ -16,6 +18,17 @@ from layouts.dashboard_layout import serve_layout
 from callbacks.filtros import registrar_callbacks_filtros
 from callbacks.grafico_temporal import actualizar_grafico
 from utils.helpers import format_label_with_unit
+
+import multiprocessing
+import sys
+
+# Forzar el método de inicio de multiprocesamiento a 'fork' en Linux
+# para evitar problemas de contexto en entornos web con Gunicorn.
+try:
+    if sys.platform != 'win32':
+        multiprocessing.set_start_method('fork')
+except RuntimeError:
+    pass # Ya ha sido inicializado
 
 # -----------------------------------------------------
 # CONFIG
@@ -56,11 +69,15 @@ MAPA_EVENT_DICT = {}
 # -----------------------------------------------------
 app.layout = html.Div([
     dcc.Store(id="current-config"),
-    dcc.Store(id="current-components"), # Contiene el DICCIONARIO de metadatos
-    dcc.Store(id="current-columns"),    # Contiene la LISTA de columnas para el checklist
+    dcc.Store(id="current-components"), 
+    dcc.Store(id="current-columns"),    
     dcc.Store(id="cached-df"),
     dcc.Store(id="slider-absolute-range"),
     dcc.Store(id="initial-figure-store"),
+    dcc.Store(id="trigger-load"),
+    
+    # 🔥 NUEVO: Temporizador que hace ping cada 5 segundos
+    dcc.Interval(id="check-epoch-interval", interval=5000, disabled=True), 
 
     serve_layout(
         config={},
@@ -75,19 +92,75 @@ app.layout = html.Div([
 # -----------------------------------------------------
 # CALLBACKS
 # -----------------------------------------------------
+SPINNER_NARANJA = html.Img(
+    src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Ccircle cx='25' cy='25' r='20' fill='none' stroke='%23FF8C00' stroke-width='4' stroke-dasharray='90 150' stroke-linecap='round'%3E%3CanimateTransform attributeName='transform' type='rotate' repeatCount='indefinite' dur='1s' values='0 25 25;360 25 25'/%3E%3C/circle%3E%3C/svg%3E",
+    style={"width": "24px", "height": "24px", "display": "block", "margin": "0 auto"}
+)
 
+# 🔥 1. CALLBACK RÁPIDO (Inicia la carga y el temporizador)
+@app.callback(
+    [Output("trigger-load", "data"),
+     Output("check-epoch-interval", "disabled")],
+    Input("dataset-selector", "value")
+)
+def evaluar_carga_dataset(dataset_name):
+    activar_intervalo = True 
+    
+    if dataset_name and dataset_name != DEFAULT_DATASET:
+        try:
+            ds = registry.get(dataset_name)
+            if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch:
+                out_path = ds.epoch.epoch_processed_root / ds.epoch.name / ds.epoch.parquet_path.name
+                if not out_path.exists() and settings_env.ASYNC_EPOCH_PROCESSING:
+                    activar_intervalo = False
+        except Exception: pass
+
+    return dataset_name, activar_intervalo
+
+
+# 🔥 2. CALLBACK TEMPORIZADOR (Vigila el proceso en 2º plano)
+@app.callback(
+    Output("trigger-load", "data", allow_duplicate=True),
+    Output("check-epoch-interval", "disabled", allow_duplicate=True),
+    Input("check-epoch-interval", "n_intervals"),
+    State("dataset-selector", "value"),
+    prevent_initial_call=True
+)
+def check_background_status(n, dataset_name):
+    try:
+        ds = registry.get(dataset_name)
+        if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch:
+            out_path = ds.epoch.epoch_processed_root / ds.epoch.name / ds.epoch.parquet_path.name
+            if out_path.exists():
+                log.info("✅ Epoch listo en disco. Disparando Merge final...")
+                return dataset_name, True
+    except Exception: pass
+    raise dash.exceptions.PreventUpdate
+
+
+# 🔥 3.# 🔥 3. CALLBACK DE CARGA REAL
 @app.callback(
     [Output("current-config", "data"), Output("current-components", "data"),
      Output("current-columns", "data"), Output("cached-df", "data"),
-     Output("slider-absolute-range", "data")],
-    Input("dataset-selector", "value")
+     Output("slider-absolute-range", "data"),
+     Output("loading-dataset-output", "children", allow_duplicate=True)],
+    Input("trigger-load", "data"),
+    State("loading-dataset-output", "children"),
+    prevent_initial_call=True
 )
-def cargar_dataset(dataset_name):
+def cargar_dataset(dataset_name, current_loading_text):
+    if not dataset_name: raise dash.exceptions.PreventUpdate
+
+    # 🛑 1º PASO CRÍTICO: Matamos cualquier proceso en segundo plano de inmediato.
+    # Da igual si has hecho F5 o seleccionado un tabular, cortamos por lo sano.
+    cancel_background_processing()
+
     global MAPA_DF, MAPA_EVENT_DICT
     log.info(f"➡ Cargando dataset {dataset_name}...")
 
     MAPA_DF.clear()
     MAPA_EVENT_DICT.clear()
+    is_partial = False
 
     if dataset_name == DEFAULT_DATASET:
         df = MAPA_DF_preload["df"]
@@ -98,7 +171,13 @@ def cargar_dataset(dataset_name):
         except: pass
         gc.collect()
         ds = registry.get(dataset_name)
-        df = ds.load_for_visualization()
+        
+        if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch:
+            out_path = ds.epoch.epoch_processed_root / ds.epoch.name / ds.epoch.parquet_path.name
+            if not out_path.exists() and settings_env.ASYNC_EPOCH_PROCESSING: 
+                is_partial = True
+
+        df = ds.load_for_visualization(allow_async=settings_env.ASYNC_EPOCH_PROCESSING)
         x_timer = ds.main.timestamp_col
 
     MAPA_DF["actual"] = df
@@ -107,7 +186,6 @@ def cargar_dataset(dataset_name):
     if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch:
         MAPA_EVENT_DICT.update(ds.epoch.event_dictionary)
 
-    # Consolidar metadatos
     components_cfg = ds.main.components.copy() if ds.main.components else {}
     if settings_env.EPOCH_MODE and hasattr(ds, 'epoch') and ds.epoch and ds.epoch.components:
         for cid, cdata in ds.epoch.components.items():
@@ -127,7 +205,16 @@ def cargar_dataset(dataset_name):
                 columns_meta.append({"name": mname, "component": comp_id, "type": mtype})
 
     slider_range = {"min": df[x_timer].iloc[0], "max": df[x_timer].iloc[-1]}
-    return {}, components_meta, columns_meta, "ready", slider_range
+    
+    # 🔥 AHORA SÍ: El callback 3 decide qué mostrar al terminar
+    if is_partial:
+        # El Tabular ya cargó, pero Epoch está en 2º plano -> Dejamos girando el naranja
+        texto_fin = SPINNER_NARANJA
+    else:
+        # Todo listo (Tabular + Epoch) -> Pintamos el check verde
+        texto_fin = html.Span("✅", style={"color": "#198754", "fontSize": "16px"})
+
+    return {}, components_meta, columns_meta, "ready", slider_range, texto_fin
 
 @app.callback(
     Output("initial-figure-store", "data"),

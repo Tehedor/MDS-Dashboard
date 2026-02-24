@@ -7,6 +7,7 @@ from typing import Optional
 class Settings(BaseSettings):
     # --- SERVER CONFIG ---
     SERVER_PORT: int = 8050
+    ASYNC_EPOCH_PROCESSING: bool = True
 
     # --- MLOPS CONFIG ---
     EXECUTIONS_ROOT: str = "./MLOPS_Simulado/executions"

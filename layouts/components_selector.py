@@ -27,13 +27,13 @@ def componentes_selector(config, opciones_checklist, datasets_disponibles, defau
 
     return html.Div(
         [
-            # FILA DE SELECTORES — tamaño restaurado
+            # FILA DE SELECTORES
             html.Div(
                 style={
                     "display": "grid",
                     "gridTemplateColumns": "1fr 1fr 1fr 1fr",
                     "gap": "20px",
-                    "marginBottom": "15px",     # 🔥 restaurado
+                    "marginBottom": "15px",
                 },
                 children=[
                     html.Div([
@@ -83,20 +83,51 @@ def componentes_selector(config, opciones_checklist, datasets_disponibles, defau
                         ]
                     ),
 
-
-                    html.Div([
-                        html.Label("Dataset:", style={"fontWeight": "bold"}),
-                        dcc.Dropdown(
-                            id="dataset-selector",
-                            options=[{"label": x, "value": x} for x in datasets_disponibles],
-                            value=default_dataset,
-                            clearable=False,
-                        ),
-                    ]),
+                    # ----------------------------------------------------
+                    # 🔥 NUEVO LAYOUT: Spinner a la izquierda del Selector
+                    # ----------------------------------------------------
+                    # ----------------------------------------------------
+                    # 🔥 NUEVO LAYOUT: Spinner centrado verticalmente
+                    # ----------------------------------------------------
+                    html.Div(
+                        style={"display": "flex", "alignItems": "center", "gap": "10px"}, # Cambiado a "center"
+                        children=[
+                            # Contenedor del Spinner de Carga (Columna 1)
+                            html.Div(
+                                style={"minWidth": "30px", "textAlign": "center"}, # Quitamos el marginBottom
+                                children=[
+                                    dcc.Loading(
+                                        id="loading-dataset",
+                                        type="circle",
+                                        color="#119DFF", 
+                                        children=[
+                                            html.Div(
+                                                id="loading-dataset-output",
+                                                style={"fontWeight": "bold", "color": "#198754", "fontSize": "16px"} # Un poco más grande para el tick ✅
+                                            )
+                                        ]
+                                    )
+                                ]
+                            ),
+                            # Contenedor del Título y Dropdown (Columna 2)
+                            html.Div(
+                                style={"flexGrow": "1"},
+                                children=[
+                                    html.Label("Dataset:", style={"fontWeight": "bold"}),
+                                    dcc.Dropdown(
+                                        id="dataset-selector",
+                                        options=[{"label": x, "value": x} for x in datasets_disponibles],
+                                        value=default_dataset,
+                                        clearable=False,
+                                    ),
+                                ]
+                            )
+                        ]
+                    ),
                 ]
             ),
 
-            # CHECKLIST — misma altura y tamaño que antes
+            # CHECKLIST
             html.Div(
                 id="zona-checklist",
                 children=[
