@@ -7,12 +7,21 @@ COMPOSE_FILE = docker-compose.yml
 CONTAINER_NAME = mi_app_dash
 PORT = 8050
 
-.PHONY: run_dev run_server build up down restart logs clean make_tar_datasets help
+.PHONY: run_dev run_dev_c run_dev_build run_server build up down restart logs clean make_tar_datasets help
 
 ## Desarrollo local
 run_dev:
 	@echo "🚀 Iniciando en modo desarrollo..."
 	@nice -n 19 python3 app.py
+
+run_dev_c:
+	@echo "🚀 Iniciando en modo desarrollo con Docker Compose y límites de recursos..."
+	@docker compose -f docker-compose.dev.yml --compatibility up --build
+
+run_dev_build:
+	@echo "🚀 Rebuilding imagen de desarrollo sin cache y levantando el servicio..."
+	@docker compose -f docker-compose.dev.yml build --no-cache dash-dev
+	@docker compose -f docker-compose.dev.yml --compatibility up
 
 run_server:
 	@echo "🚀 Iniciando con Gunicorn (producción local)..."

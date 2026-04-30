@@ -47,12 +47,18 @@ registry = DatasetRegistry(BASE_DATASETS_DIR)
 
 datasets_disponibles = registry.list()
 DEFAULT_DATASET = registry.default_dataset
-ds_default = registry.get_default()
-df_default = ds_default.load_for_visualization()
+if DEFAULT_DATASET and datasets_disponibles:
+    ds_default = registry.get_default()
+    df_default = ds_default.load_for_visualization()
+    x_timer_default = ds_default.main.timestamp_col
+else:
+    ds_default = None
+    df_default = pd.DataFrame()
+    x_timer_default = settings_env.TIMESTAMP_COL
 
 MAPA_DF_preload = {
     "df": df_default,
-    "x_timer": ds_default.main.timestamp_col,
+    "x_timer": x_timer_default,
     "ds_obj": ds_default
 }
 
@@ -275,4 +281,4 @@ def grafico_callback(sel, fig_ini, comp_info, relayout, slider):
 registrar_callbacks_filtros(app)
 
 if __name__ == "__main__":
-    app.run(debug=False, port=settings_env.SERVER_PORT)
+    app.run(debug=False, host="0.0.0.0", port=settings_env.SERVER_PORT)

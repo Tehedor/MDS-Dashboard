@@ -8,8 +8,8 @@ BUILDER_NAME="mi_builder"
 BUILDKIT_CONTAINER="buildx_buildkit_${BUILDER_NAME}0"
 
 DOCKERHUB_USER="stehedor"
-IMAGE_NAME="mds_temporal_app"
-TAG="v0"
+IMAGE_NAME="mds_temporal_app_mlops"
+TAG="v2"
 
 if [[ -z "$DOCKERHUB_USER" || -z "$IMAGE_NAME" ]]; then
 	echo "Usage: $0 <dockerhub_user> <image_name> [tag]"

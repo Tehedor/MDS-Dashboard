@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import yaml
 import json  # Import necesario para leer metadata
 from pathlib import Path
@@ -78,23 +77,53 @@ def format_control_yaml(yaml_text: str) -> str:
 # 🛠️ HELPERS
 # ============================================================
 
-def load_variants(stage_path: Path) -> dict:
+def discover_variants(stage_path: Path) -> dict:
+    """
+    Descubre variantes desde directorios hijos tipo v1_0001.
+
+    Mantiene compatibilidad con el esquema antiguo basado en variants.yaml,
+    pero prioriza el layout nuevo donde cada variante vive en su propia carpeta.
+    """
     variants_file = stage_path / "variants.yaml"
-    if not variants_file.exists():
+    if variants_file.exists():
+        with open(variants_file, "r", encoding="utf-8") as f:
+            legacy_variants = yaml.safe_load(f) or {}
+        variants = legacy_variants.get("variants", {})
+        if variants:
+            return variants
+
+    if not stage_path.exists():
         return {}
-    with open(variants_file, "r") as f:
-        return yaml.safe_load(f).get("variants", {})
+
+    discovered = {}
+    for variant_dir in sorted(
+        path for path in stage_path.iterdir() if path.is_dir() and path.name.startswith("v")
+    ):
+        parquet = find_parquet_from_params(variant_dir)
+        if parquet is None:
+            continue
+
+        discovered[variant_dir.name] = {
+            "path": variant_dir,
+            "parquet_path": parquet,
+        }
+
+    return discovered
 
 def find_parquet_from_params(
-    version: str,
-    params_path: Path,
-    stage_root: Path,
+    version_dir: Path,
 ) -> Path | None:
-    version_dir = stage_root / version
     if not version_dir.exists():
         return None
-    for parquet in version_dir.rglob("*.parquet"):
-        return parquet
+
+    preferred = sorted(version_dir.rglob("*_dataset.parquet"))
+    if preferred:
+        return preferred[0]
+
+    parquets = sorted(version_dir.rglob("*.parquet"))
+    if parquets:
+        return parquets[0]
+
     return None
 
 def version_key(version: str) -> str:
@@ -108,18 +137,54 @@ def get_epoch_parent_variant(parquet_path: Path) -> str | None:
     # Asumimos que el metadata json está en el mismo directorio que el parquet
     # o en el directorio de la versión. Buscamos en el directorio del parquet.
     parent_dir = parquet_path.parent
-    metadata_file = parent_dir / settings_env.CTRL_COMPONENTS_EPOCH_METADATA
-    
-    if not metadata_file.exists():
-        return None
-        
-    try:
-        with open(metadata_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data.get("parent_variant") # Ej: "v003"
-    except Exception as e:
-        print(f"⚠️ Error leyendo metadata en {metadata_file}: {e}")
-        return None
+
+    metadata_candidates = [parent_dir / candidate for candidate in settings_env.CTRL_COMPONENTS_EPOCH_METADATA_CANDIDATES]
+    preferred_metadata = parent_dir / settings_env.CTRL_COMPONENTS_EPOCH_METADATA
+    if preferred_metadata not in metadata_candidates:
+        metadata_candidates.insert(0, preferred_metadata)
+
+    seen_files = set()
+
+    for metadata_file in metadata_candidates:
+        if metadata_file in seen_files or not metadata_file.exists():
+            continue
+        seen_files.add(metadata_file)
+
+        try:
+            with open(metadata_file, "r", encoding="utf-8") as f:
+                if metadata_file.suffix.lower() == ".json":
+                    data = json.load(f)
+                else:
+                    data = yaml.safe_load(f)
+
+            parent_variant = _find_nested_value(data, ("parent_variant", "parent"))
+            if parent_variant:
+                return str(parent_variant)
+        except Exception as e:
+            print(f"⚠️ Error leyendo metadata en {metadata_file}: {e}")
+
+    return None
+
+
+def _find_nested_value(data, keys: tuple[str, ...]):
+    if isinstance(data, dict):
+        for key in keys:
+            value = data.get(key)
+            if value:
+                return value
+
+        for value in data.values():
+            nested = _find_nested_value(value, keys)
+            if nested is not None:
+                return nested
+
+    if isinstance(data, list):
+        for item in data:
+            nested = _find_nested_value(item, keys)
+            if nested is not None:
+                return nested
+
+    return None
 
 def generate_control_yml() -> Path:
     # ============================================================
@@ -132,13 +197,11 @@ def generate_control_yml() -> Path:
 
     # ---------- TABULAR ----------
     explore_stage_root = EXECUTIONS_ROOT / EXPLORE_STAGE
-    explore_variants = load_variants(explore_stage_root)
+    explore_variants = discover_variants(explore_stage_root)
 
     for v, meta in explore_variants.items():
         parquet = find_parquet_from_params(
-            version=v,
-            params_path=Path(meta["params_path"]),
-            stage_root=explore_stage_root,
+            Path(meta.get("path", explore_stage_root / v)),
         )
         if parquet is None:
             continue
@@ -153,13 +216,11 @@ def generate_control_yml() -> Path:
 
     # ---------- EPOCH ----------
     events_stage_root = EXECUTIONS_ROOT / EVENTS_STAGE
-    events_variants = load_variants(events_stage_root)
+    events_variants = discover_variants(events_stage_root)
 
     for v, meta in events_variants.items():
         parquet = find_parquet_from_params(
-            version=v,
-            params_path=Path(meta["params_path"]),
-            stage_root=events_stage_root,
+            Path(meta.get("path", events_stage_root / v)),
         )
         if parquet is None:
             continue
@@ -222,9 +283,9 @@ def generate_control_yml() -> Path:
                     print(f"⚠️ El dataset de eventos {epoch_name} requiere temporal {parent_variant_full}, pero no se encontró.")
 
     if not subdatasets:
-        raise RuntimeError(
-            "No se encontraron parquets para construir control.yml. "
-            "Revisa EXECUTIONS_ROOT/variants.yaml y los volúmenes montados."
+        print(
+            "⚠️ No se encontraron parquets para construir control.yml. "
+            "Se generará un archivo vacío y se omitirán los datasets ausentes."
         )
 
     # ============================================================

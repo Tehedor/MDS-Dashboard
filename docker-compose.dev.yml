@@ -1,0 +1,22 @@
+services:
+  dash-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mi_app_desarrollo
+    ports:
+      - "8050:8050"
+    volumes:
+      - .:/app
+    environment:
+      - DASH_DEBUG=true
+      - PYTHONUNBUFFERED=1
+    command: python3 app.py
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+    restart: unless-stopped

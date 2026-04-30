@@ -1,7 +1,7 @@
 services:
   dash-app:
     build: .
-    container_name: mi_app_dash
+    container_name: mds_temporal_app_mlops
     ports:
       - "8050:8050"
     volumes:

@@ -34,3 +34,5 @@ debug/*.txt
 .venv
 
 MLOPS_Simulado/*
+
+executions

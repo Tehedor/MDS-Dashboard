@@ -59,10 +59,17 @@ class DatasetRegistry:
         # ------------------------------
         self.default_dataset = self.control.get("default_dataset")
         if self.default_dataset not in self.datasets:
-            raise RuntimeError(
-                f"default_dataset '{self.default_dataset}' "
-                "no existe en Datasets"
-            )
+            if self.datasets:
+                self.default_dataset = next(iter(self.datasets))
+                logging.warning(
+                    "default_dataset no existe en Datasets; usando '%s'",
+                    self.default_dataset,
+                )
+            else:
+                self.default_dataset = None
+                logging.warning(
+                    "control.yml no contiene Datasets utilizables; la app arrancará sin dataset por defecto"
+                )
 
         logging.info(
             f"📦 Dataset por defecto: {self.default_dataset}"
@@ -76,7 +83,8 @@ class DatasetRegistry:
 
         section = self.control.get("subdatasets", {})
         if not section:
-            raise RuntimeError("control.yml no define 'subdatasets'")
+            logging.warning("control.yml no define 'subdatasets'")
+            return out
 
         logging.info("📁 Cargando SubDatasets")
 
@@ -99,7 +107,8 @@ class DatasetRegistry:
 
         section = self.control.get("Datasets", {})
         if not section:
-            raise RuntimeError("control.yml no define 'Datasets'")
+            logging.warning("control.yml no define 'Datasets'")
+            return out
 
         logging.info("📦 Cargando DatasetComposite")
 

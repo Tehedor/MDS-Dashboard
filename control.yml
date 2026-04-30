@@ -1,0 +1,219 @@
+version: '1.0'
+description: Control maestro de los datasets del sistema
+
+subdatasets:
+  MDS-Dataset-v1_0020:
+    type: tabular
+    path: executions/f01_explore/v1_0020/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0021:
+    type: tabular
+    path: executions/f01_explore/v1_0021/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0022:
+    type: tabular
+    path: executions/f01_explore/v1_0022/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0023:
+    type: tabular
+    path: executions/f01_explore/v1_0023/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0025:
+    type: tabular
+    path: executions/f01_explore/v1_0025/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0028:
+    type: tabular
+    path: executions/f01_explore/v1_0028/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0100:
+    type: tabular
+    path: executions/f01_explore/v1_0100/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0103:
+    type: tabular
+    path: executions/f01_explore/v1_0103/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0104:
+    type: tabular
+    path: executions/f01_explore/v1_0104/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0105:
+    type: tabular
+    path: executions/f01_explore/v1_0105/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0106:
+    type: tabular
+    path: executions/f01_explore/v1_0106/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0107:
+    type: tabular
+    path: executions/f01_explore/v1_0107/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_0108:
+    type: tabular
+    path: executions/f01_explore/v1_0108/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_2123:
+    type: tabular
+    path: executions/f01_explore/v1_2123/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_2124:
+    type: tabular
+    path: executions/f01_explore/v1_2124/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_2125:
+    type: tabular
+    path: executions/f01_explore/v1_2125/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  MDS-Dataset-v1_2126:
+    type: tabular
+    path: executions/f01_explore/v1_2126/01_explore_dataset.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+
+  Epoch-Dataset-v2_0201:
+    type: event-encoded
+    path: executions/f02_events/v2_0201/02_events.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+    merge_on: segs
+    strategy: sparse-columns
+
+  Epoch-Dataset-v2_0202:
+    type: event-encoded
+    path: executions/f02_events/v2_0202/02_events.parquet
+    control_file: control_dataset.yml
+    timestamp_col: segs
+    merge_on: segs
+    strategy: sparse-columns
+
+Datasets:
+  MDS-Complete-v1_0020:
+    subdatasets:
+      main: MDS-Dataset-v1_0020
+      epoch: null
+
+  MDS-Complete-v1_0021:
+    subdatasets:
+      main: MDS-Dataset-v1_0021
+      epoch: null
+
+  MDS-Complete-v1_0022:
+    subdatasets:
+      main: MDS-Dataset-v1_0022
+      epoch: null
+
+  MDS-Complete-v1_0023:
+    subdatasets:
+      main: MDS-Dataset-v1_0023
+      epoch: null
+
+  MDS-Complete-v1_0025:
+    subdatasets:
+      main: MDS-Dataset-v1_0025
+      epoch: null
+
+  MDS-Complete-v1_0028:
+    subdatasets:
+      main: MDS-Dataset-v1_0028
+      epoch: null
+
+  MDS-Complete-v1_0100:
+    subdatasets:
+      main: MDS-Dataset-v1_0100
+      epoch: null
+
+  MDS-Complete-v1_0103:
+    subdatasets:
+      main: MDS-Dataset-v1_0103
+      epoch: null
+
+  MDS-Complete-v1_0104:
+    subdatasets:
+      main: MDS-Dataset-v1_0104
+      epoch: null
+
+  MDS-Complete-v1_0105:
+    subdatasets:
+      main: MDS-Dataset-v1_0105
+      epoch: null
+
+  MDS-Complete-v1_0106:
+    subdatasets:
+      main: MDS-Dataset-v1_0106
+      epoch: null
+
+  MDS-Complete-v1_0107:
+    subdatasets:
+      main: MDS-Dataset-v1_0107
+      epoch: null
+
+  MDS-Complete-v1_0108:
+    subdatasets:
+      main: MDS-Dataset-v1_0108
+      epoch: null
+
+  MDS-Complete-v1_2123:
+    subdatasets:
+      main: MDS-Dataset-v1_2123
+      epoch: null
+
+  MDS-Complete-v1_2124:
+    subdatasets:
+      main: MDS-Dataset-v1_2124
+      epoch: null
+
+  MDS-Complete-v1_2125:
+    subdatasets:
+      main: MDS-Dataset-v1_2125
+      epoch: null
+
+  MDS-Complete-v1_2126:
+    subdatasets:
+      main: MDS-Dataset-v1_2126
+      epoch: null
+
+  MDS-Complete-Tv1_0023_Ev2_0201:
+    subdatasets:
+      main: MDS-Dataset-v1_0023
+      epoch: Epoch-Dataset-v2_0201
+
+  MDS-Complete-Tv1_0023_Ev2_0202:
+    subdatasets:
+      main: MDS-Dataset-v1_0023
+      epoch: Epoch-Dataset-v2_0202
+
+default_dataset: MDS-Complete-v1_0020
