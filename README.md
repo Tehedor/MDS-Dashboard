@@ -4,9 +4,9 @@
 <img width="897" height="502" alt="image29" src="https://github.com/user-attachments/assets/06f4bd98-6411-425e-bb9e-0563505f32d0" />
 
 ## Pipelines
-https://github.com/TeheORG/mlops4rtedge 
-https://github.com/TeheORG/mlops4rtedgeTS 
-https://github.com/TeheORG/mlops4rtedgeUni 
++ https://github.com/TeheORG/mlops4rtedge 
++ https://github.com/TeheORG/mlops4rtedgeTS 
++ https://github.com/TeheORG/mlops4rtedgeUni 
 
 ## Views
 
